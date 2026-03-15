@@ -16,7 +16,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:'Cairo','Poppins',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;overflow-x:hidden;padding-bottom:70px}
+body{font-family:'Cairo','Poppins',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;overflow-x:hidden;padding-bottom:90px}
 body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 20% 20%,rgba(0,200,83,0.06) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(255,107,53,0.04) 0%,transparent 50%);pointer-events:none;z-index:0}
 header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 20px}
 .header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
@@ -206,16 +206,23 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.92);backdrop
       <div class="form-group"><label class="form-label" id="addressLabel">العنوان *</label><input class="form-input" id="custAddress" placeholder="الشارع / المنطقة / الدور / الشقة"></div>
       <div class="form-group"><label class="form-label" id="notesLabel">ملاحظات (اختياري)</label><textarea class="form-textarea" id="custNotes" placeholder="أي تعليمات خاصة..."></textarea></div>
       <div class="form-group">
-        <label class="form-label" id="payLabel">طريقة الدفع</label>
-        <div class="payment-opts">
-          <div class="pay-opt active" id="payCash" onclick="selectPay('cash')"><div class="pay-opt-icon">💵</div><div class="pay-opt-label" id="cashLabel">كاش</div></div>
-          <div class="pay-opt" id="payElec" onclick="selectPay('electronic')"><div class="pay-opt-icon">📱</div><div class="pay-opt-label" id="elecLabel">إلكتروني</div></div>
+        <div style="background:rgba(0,200,83,0.08);border:1px solid rgba(0,200,83,0.2);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:24px">💵</span>
+          <div><div style="font-size:14px;font-weight:700">الدفع عند الاستلام</div><div style="font-size:12px;color:var(--text-muted)">كاش فقط</div></div>
         </div>
       </div>
       <div class="cart-summary"><div class="summary-row total"><span id="totalLabel2">الإجمالي:</span><span><span id="summaryTotal2">0</span> <span class="curr">ج.م</span></span></div></div>
       <button class="checkout-btn" id="placeOrderBtn" onclick="placeOrder()">تأكيد الطلب 🎉</button>
       <button onclick="goStep(1)" style="width:100%;background:none;border:none;color:var(--text-muted);font-family:inherit;font-size:13px;margin-top:12px;cursor:pointer;padding:8px" id="backBtn">← رجوع للسلة</button>
     </div>
+  </div>
+</div>
+
+<!-- PRODUCT DETAIL MODAL -->
+<div class="modal-center" id="productDetailModal">
+  <div class="modal-box" style="max-width:480px">
+    <button class="modal-close" onclick="closeProductDetail()" style="float:left">×</button>
+    <div id="productDetailContent"></div>
   </div>
 </div>
 
@@ -239,34 +246,178 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.92);backdrop
 
 <script>
 const API='/api';
-let lang='ar',cart=JSON.parse(localStorage.getItem('ff_cart')||'[]'),allProducts=[],filteredProducts=[],selectedPayment='cash',deliveryFee=10;
-const T={ar:{storeName:'فيوتشر فودز',heroTag:'توصيل سريع لباب بيتك',heroTitle:'تسوّق من <span>بيتك</span><br>واستقبل طلبك بسرعة',heroSub:'أفضل المنتجات الطازجة بأسعار مناسبة',catTitle:'التصنيفات',productsTitle:'المنتجات',allCat:'الكل',search:'ابحث عن منتج...',cartLabel:'السلة',tabCart:'السلة',tabDetails:'التفاصيل',continueBtn:'متابعة الطلب ←',backBtn:'← رجوع للسلة',nameLabel:'الاسم الكامل *',phoneLabel:'رقم الهاتف *',addressLabel:'العنوان *',notesLabel:'ملاحظات (اختياري)',payLabel:'طريقة الدفع',cashLabel:'كاش',elecLabel:'إلكتروني',placeOrder:'تأكيد الطلب 🎉',subLabel:'المجموع:',delivLabel:'التوصيل:',totalLabel:'الإجمالي:',emptyCart:'السلة فارغة',emptyProd:'لا توجد منتجات',outOfStock:'نفد المخزون',trackTitle:'تتبع الطلب',trackPhoneLabel:'رقم هاتفك',trackBtn:'بحث 🔍',navHome:'الرئيسية',navTrack:'طلباتي',navCart:'السلة',curr:'ج.م',noOrders:'لا توجد طلبات بهذا الرقم',orderSuccess:'تم تأكيد طلبك بنجاح! 🎉',fillFields:'يرجى تعبئة جميع الحقول',closed:'المحل مغلق حالياً',statuses:{pending:'قيد الانتظار',confirmed:'تم التأكيد',preparing:'جارٍ التحضير',delivering:'في الطريق',delivered:'تم التوصيل',cancelled:'ملغي'},statusIcons:{pending:'⏳',confirmed:'✅',preparing:'👨‍🍳',delivering:'🚴',delivered:'🎉',cancelled:'❌'}},en:{storeName:'Future Foods',heroTag:'Fast delivery to your door',heroTitle:'Shop from <span>Home</span><br>Receive orders fast',heroSub:'Best fresh products at great prices',catTitle:'Categories',productsTitle:'Products',allCat:'All',search:'Search products...',cartLabel:'Cart',tabCart:'Cart',tabDetails:'Details',continueBtn:'Continue →',backBtn:'← Back',nameLabel:'Full Name *',phoneLabel:'Phone Number *',addressLabel:'Address *',notesLabel:'Notes (optional)',payLabel:'Payment Method',cashLabel:'Cash',elecLabel:'Electronic',placeOrder:'Place Order 🎉',subLabel:'Subtotal:',delivLabel:'Delivery:',totalLabel:'Total:',emptyCart:'Cart is empty',emptyProd:'No products found',outOfStock:'Out of Stock',trackTitle:'Track Order',trackPhoneLabel:'Your Phone Number',trackBtn:'Search 🔍',navHome:'Home',navTrack:'My Orders',navCart:'Cart',curr:'EGP',noOrders:'No orders found',orderSuccess:'Order placed successfully! 🎉',fillFields:'Please fill all required fields',closed:'Store is currently closed',statuses:{pending:'Pending',confirmed:'Confirmed',preparing:'Preparing',delivering:'On the way',delivered:'Delivered',cancelled:'Cancelled'},statusIcons:{pending:'⏳',confirmed:'✅',preparing:'👨‍🍳',delivering:'🚴',delivered:'🎉',cancelled:'❌'}}};
+let lang='ar',cart=JSON.parse(localStorage.getItem('ff_cart')||'[]'),allProducts=[],filteredProducts=[],deliveryFee=10;
+const T={ar:{storeName:'فيوتشر فودز',heroTag:'توصيل سريع لباب بيتك',heroTitle:'تسوّق من <span>بيتك</span><br>واستقبل طلبك بسرعة',heroSub:'أفضل المنتجات الطازجة بأسعار مناسبة',catTitle:'التصنيفات',productsTitle:'المنتجات',allCat:'الكل',search:'ابحث عن منتج...',cartLabel:'السلة',tabCart:'السلة',tabDetails:'التفاصيل',continueBtn:'متابعة الطلب ←',backBtn:'← رجوع للسلة',nameLabel:'الاسم الكامل *',phoneLabel:'رقم الهاتف *',addressLabel:'العنوان *',notesLabel:'ملاحظات (اختياري)',placeOrder:'تأكيد الطلب 🎉',subLabel:'المجموع:',delivLabel:'التوصيل:',totalLabel:'الإجمالي:',emptyCart:'السلة فارغة',emptyProd:'لا توجد منتجات',outOfStock:'نفد المخزون',trackTitle:'تتبع الطلب',trackPhoneLabel:'رقم هاتفك',trackBtn:'بحث 🔍',navHome:'الرئيسية',navTrack:'طلباتي',navCart:'السلة',curr:'ج.م',noOrders:'لا توجد طلبات بهذا الرقم',orderSuccess:'تم تأكيد طلبك بنجاح! 🎉',fillFields:'يرجى تعبئة جميع الحقول',closed:'المحل مغلق حالياً',addToCart:'أضف للسلة',details:'التفاصيل',inStock:'متوفر',statuses:{pending:'قيد الانتظار',confirmed:'تم التأكيد',preparing:'جارٍ التحضير',delivering:'في الطريق',delivered:'تم التوصيل',cancelled:'ملغي'},statusIcons:{pending:'⏳',confirmed:'✅',preparing:'👨‍🍳',delivering:'🚴',delivered:'🎉',cancelled:'❌'}},en:{storeName:'Future Foods',heroTag:'Fast delivery to your door',heroTitle:'Shop from <span>Home</span><br>Receive orders fast',heroSub:'Best fresh products at great prices',catTitle:'Categories',productsTitle:'Products',allCat:'All',search:'Search products...',cartLabel:'Cart',tabCart:'Cart',tabDetails:'Details',continueBtn:'Continue →',backBtn:'← Back',nameLabel:'Full Name *',phoneLabel:'Phone Number *',addressLabel:'Address *',notesLabel:'Notes (optional)',placeOrder:'Place Order 🎉',subLabel:'Subtotal:',delivLabel:'Delivery:',totalLabel:'Total:',emptyCart:'Cart is empty',emptyProd:'No products found',outOfStock:'Out of Stock',trackTitle:'Track Order',trackPhoneLabel:'Your Phone Number',trackBtn:'Search 🔍',navHome:'Home',navTrack:'My Orders',navCart:'Cart',curr:'EGP',noOrders:'No orders found',orderSuccess:'Order placed successfully! 🎉',fillFields:'Please fill all required fields',closed:'Store is currently closed',addToCart:'Add to Cart',details:'Details',inStock:'In Stock',statuses:{pending:'Pending',confirmed:'Confirmed',preparing:'Preparing',delivering:'On the way',delivered:'Delivered',cancelled:'Cancelled'},statusIcons:{pending:'⏳',confirmed:'✅',preparing:'👨‍🍳',delivering:'🚴',delivered:'🎉',cancelled:'❌'}}};
 
 async function init(){updateUI();updateCartBadge();await loadSettings();await loadCategories();await loadProducts()}
+
 async function loadSettings(){try{const s=await fetch(`${API}/settings`).then(r=>r.json());if(s){deliveryFee=parseFloat(s.delivery_fee)||10;document.getElementById('summaryDelivery').textContent=deliveryFee;document.getElementById('storeName').textContent=lang==='ar'?s.store_name_ar:s.store_name_en;if(!s.is_open){const b=document.getElementById('closedBanner');b.textContent=T[lang].closed;b.style.display='block'}}}catch(e){}}
+
 async function loadCategories(){try{const cats=await fetch(`${API}/categories`).then(r=>r.json());const c=document.getElementById('catsContainer');cats.forEach(cat=>{const btn=document.createElement('button');btn.className='cat-pill';btn.dataset.id=cat.id;btn.innerHTML=`${cat.icon} <span>${lang==='ar'?cat.name_ar:cat.name_en}</span>`;btn.onclick=()=>filterByCategory(cat.id,btn);c.appendChild(btn)})}catch(e){}}
+
 async function loadProducts(){try{allProducts=await fetch(`${API}/products?available=true`).then(r=>r.json());filteredProducts=allProducts;renderProducts()}catch(e){document.getElementById('productsLoading').style.display='none';document.getElementById('productsEmpty').style.display='block'}}
-function renderProducts(){const grid=document.getElementById('productsGrid'),loading=document.getElementById('productsLoading'),empty=document.getElementById('productsEmpty');loading.style.display='none';const q=document.getElementById('searchInput').value.toLowerCase();let products=filteredProducts;if(q)products=products.filter(p=>p.name_ar.toLowerCase().includes(q)||(p.name_en||'').toLowerCase().includes(q));if(!products.length){grid.style.display='none';empty.style.display='block';return}empty.style.display='none';grid.style.display='grid';grid.innerHTML=products.map(p=>{const name=lang==='ar'?p.name_ar:(p.name_en||p.name_ar);const unit=lang==='ar'?p.unit_ar:(p.unit_en||p.unit_ar);const oos=p.stock<=0;const hasSale=p.original_price&&p.original_price>p.price;return`<div class="product-card" onclick="addToCart('${p.id}')"><div class="product-img">${p.image_url?`<img src="${p.image_url}" alt="${name}" loading="lazy">`:'🛒'}</div>${oos?`<div class="out-of-stock">${T[lang].outOfStock}</div>`:hasSale?`<div class="sale-badge">خصم</div>`:''}<div class="product-body"><div class="product-name">${name}</div><div class="product-unit">${unit}</div><div class="product-footer"><div><div class="product-price">${p.price} ${T[lang].curr}</div>${hasSale?`<div class="product-original">${p.original_price} ${T[lang].curr}</div>`:''}</div>${!oos?`<button class="add-btn" onclick="event.stopPropagation();addToCart('${p.id}')">+</button>`:''}</div></div></div>`}).join('')}
+
+function renderProducts(){
+  const grid=document.getElementById('productsGrid'),loading=document.getElementById('productsLoading'),empty=document.getElementById('productsEmpty');
+  loading.style.display='none';
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  let products=filteredProducts;
+  if(q)products=products.filter(p=>p.name_ar.toLowerCase().includes(q)||(p.name_en||'').toLowerCase().includes(q));
+  if(!products.length){grid.style.display='none';empty.style.display='block';return}
+  empty.style.display='none';grid.style.display='grid';
+  grid.innerHTML=products.map(p=>{
+    const name=lang==='ar'?p.name_ar:(p.name_en||p.name_ar);
+    const unit=lang==='ar'?p.unit_ar:(p.unit_en||p.unit_ar);
+    const oos=p.stock<=0;
+    const hasSale=p.original_price&&p.original_price>p.price;
+    return`<div class="product-card" onclick="openProductDetail('${p.id}')">
+      <div class="product-img">${p.image_url?`<img src="${p.image_url}" alt="${name}" loading="lazy">`:'🛒'}</div>
+      ${oos?`<div class="out-of-stock">${T[lang].outOfStock}</div>`:hasSale?`<div class="sale-badge">خصم</div>`:''}
+      <div class="product-body">
+        <div class="product-name">${name}</div>
+        <div class="product-unit">${unit}</div>
+        <div class="product-footer">
+          <div>
+            <div class="product-price">${p.price} ${T[lang].curr}</div>
+            ${hasSale?`<div class="product-original">${p.original_price} ${T[lang].curr}</div>`:''}
+          </div>
+          ${!oos?`<button class="add-btn" onclick="event.stopPropagation();addToCart('${p.id}')">+</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== PRODUCT DETAIL =====
+function openProductDetail(id){
+  const p=allProducts.find(x=>x.id===id);
+  if(!p)return;
+  const name=lang==='ar'?p.name_ar:(p.name_en||p.name_ar);
+  const unit=lang==='ar'?p.unit_ar:(p.unit_en||p.unit_ar);
+  const desc=lang==='ar'?p.description_ar:(p.description_en||p.description_ar);
+  const oos=p.stock<=0;
+  const hasSale=p.original_price&&p.original_price>p.price;
+  document.getElementById('productDetailContent').innerHTML=`
+    <div style="margin-bottom:16px">
+      <div style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--dark3);display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:16px">
+        ${p.image_url?`<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`:'🛒'}
+      </div>
+      <div style="font-size:22px;font-weight:900;margin-bottom:6px">${name}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">${unit}</div>
+      ${desc?`<div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:16px">${desc}</div>`:''}
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <div style="font-size:26px;font-weight:900;color:var(--green)">${p.price} ${T[lang].curr}</div>
+        ${hasSale?`<div style="font-size:16px;color:var(--text-muted);text-decoration:line-through">${p.original_price} ${T[lang].curr}</div>`:''}
+      </div>
+      <div style="font-size:13px;margin-bottom:20px">
+        ${oos
+          ?`<span style="color:var(--orange);font-weight:700">❌ ${T[lang].outOfStock}</span>`
+          :`<span style="color:var(--green);font-weight:700">✅ ${T[lang].inStock}</span>`}
+      </div>
+      ${!oos?`
+      <button onclick="addToCart('${p.id}');closeProductDetail()" style="width:100%;background:var(--green);border:none;color:#fff;padding:16px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 8px 25px rgba(0,200,83,0.3)">
+        🛒 ${T[lang].addToCart}
+      </button>`:''}
+    </div>`;
+  document.getElementById('productDetailModal').classList.add('open');
+}
+function closeProductDetail(){document.getElementById('productDetailModal').classList.remove('open')}
+
 function filterByCategory(id,btn){document.querySelectorAll('.cat-pill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filteredProducts=id==='all'?allProducts:allProducts.filter(p=>p.category_id===id);renderProducts()}
+
 function addToCart(productId){const p=allProducts.find(x=>x.id===productId);if(!p||p.stock<=0)return;const existing=cart.find(x=>x.id===productId);if(existing)existing.qty++;else cart.push({id:p.id,name_ar:p.name_ar,name_en:p.name_en||p.name_ar,price:p.price,image_url:p.image_url,qty:1});saveCart();showToast(`✅ ${lang==='ar'?p.name_ar:p.name_en||p.name_ar}`)}
 function removeFromCart(id){cart=cart.filter(x=>x.id!==id);saveCart();renderCart()}
 function changeQty(id,delta){const item=cart.find(x=>x.id===id);if(!item)return;item.qty+=delta;if(item.qty<=0)removeFromCart(id);else{saveCart();renderCart()}}
 function saveCart(){localStorage.setItem('ff_cart',JSON.stringify(cart));updateCartBadge()}
 function updateCartBadge(){document.getElementById('cartCount').textContent=cart.reduce((s,x)=>s+x.qty,0)}
-function renderCart(){const container=document.getElementById('cartItems'),emptyEl=document.getElementById('cartEmpty'),summaryBox=document.getElementById('cartSummaryBox');if(!cart.length){container.innerHTML='';emptyEl.style.display='block';summaryBox.style.display='none';return}emptyEl.style.display='none';summaryBox.style.display='block';const subtotal=cart.reduce((s,x)=>s+x.price*x.qty,0);const total=subtotal+deliveryFee;container.innerHTML=cart.map(item=>`<div class="cart-item"><div class="cart-item-img">${item.image_url?`<img src="${item.image_url}">`:'🛒'}</div><div class="cart-item-info"><div class="cart-item-name">${lang==='ar'?item.name_ar:item.name_en}</div><div class="cart-item-price">${(item.price*item.qty).toFixed(2)} ${T[lang].curr}</div></div><div class="qty-ctrl"><button class="qty-btn" onclick="changeQty('${item.id}',-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="changeQty('${item.id}',1)">+</button></div></div>`).join('');document.getElementById('summarySubtotal').textContent=subtotal.toFixed(2);document.getElementById('summaryDelivery').textContent=deliveryFee.toFixed(2);document.getElementById('summaryTotal').textContent=total.toFixed(2);document.getElementById('summaryTotal2').textContent=total.toFixed(2)}
+
+function renderCart(){
+  const container=document.getElementById('cartItems'),emptyEl=document.getElementById('cartEmpty'),summaryBox=document.getElementById('cartSummaryBox');
+  if(!cart.length){container.innerHTML='';emptyEl.style.display='block';summaryBox.style.display='none';return}
+  emptyEl.style.display='none';summaryBox.style.display='block';
+  const subtotal=cart.reduce((s,x)=>s+x.price*x.qty,0);
+  const total=subtotal+deliveryFee;
+  container.innerHTML=cart.map(item=>`
+    <div class="cart-item">
+      <div class="cart-item-img">${item.image_url?`<img src="${item.image_url}">`:'🛒'}</div>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${lang==='ar'?item.name_ar:item.name_en}</div>
+        <div class="cart-item-price">${(item.price*item.qty).toFixed(2)} ${T[lang].curr}</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty('${item.id}',-1)">−</button>
+        <span class="qty-num">${item.qty}</span>
+        <button class="qty-btn" onclick="changeQty('${item.id}',1)">+</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('summarySubtotal').textContent=subtotal.toFixed(2);
+  document.getElementById('summaryDelivery').textContent=deliveryFee.toFixed(2);
+  document.getElementById('summaryTotal').textContent=total.toFixed(2);
+  document.getElementById('summaryTotal2').textContent=total.toFixed(2);
+}
+
 function openCart(){document.getElementById('cartOverlay').classList.add('open');goStep(1);renderCart()}
 function closeCartIfOutside(e){if(e.target===document.getElementById('cartOverlay'))document.getElementById('cartOverlay').classList.remove('open')}
 function goStep(n){document.getElementById('step1').style.display=n===1?'block':'none';document.getElementById('step2').style.display=n===2?'block':'none';document.getElementById('tab1').classList.toggle('active',n===1);document.getElementById('tab2').classList.toggle('active',n===2)}
-function selectPay(type){selectedPayment=type;document.getElementById('payCash').classList.toggle('active',type==='cash');document.getElementById('payElec').classList.toggle('active',type==='electronic')}
-async function placeOrder(){const name=document.getElementById('custName').value.trim(),phone=document.getElementById('custPhone').value.trim(),address=document.getElementById('custAddress').value.trim(),notes=document.getElementById('custNotes').value.trim();if(!name||!phone||!address){showToast('⚠️ '+T[lang].fillFields);return}const btn=document.getElementById('placeOrderBtn');btn.disabled=true;btn.textContent='...';const subtotal=cart.reduce((s,x)=>s+x.price*x.qty,0);const total=subtotal+deliveryFee;try{await fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_name:name,customer_phone:phone,customer_address:address,customer_notes:notes,payment_method:selectedPayment,subtotal,delivery_fee:deliveryFee,total,items:cart.map(item=>({product_id:item.id,product_name_ar:item.name_ar,product_name_en:item.name_en,price:item.price,quantity:item.qty,subtotal:item.price*item.qty}))})});cart=[];saveCart();document.getElementById('cartOverlay').classList.remove('open');showToast('🎉 '+T[lang].orderSuccess)}catch(e){showToast('❌ خطأ، حاول مجدداً')}finally{btn.disabled=false;btn.textContent=T[lang].placeOrder}}
+
+async function placeOrder(){
+  const name=document.getElementById('custName').value.trim(),phone=document.getElementById('custPhone').value.trim(),address=document.getElementById('custAddress').value.trim(),notes=document.getElementById('custNotes').value.trim();
+  if(!name||!phone||!address){showToast('⚠️ '+T[lang].fillFields);return}
+  const btn=document.getElementById('placeOrderBtn');btn.disabled=true;btn.textContent='...';
+  const subtotal=cart.reduce((s,x)=>s+x.price*x.qty,0);
+  const total=subtotal+deliveryFee;
+  try{
+    await fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_name:name,customer_phone:phone,customer_address:address,customer_notes:notes,payment_method:'cash',subtotal,delivery_fee:deliveryFee,total,items:cart.map(item=>({product_id:item.id,product_name_ar:item.name_ar,product_name_en:item.name_en,price:item.price,quantity:item.qty,subtotal:item.price*item.qty}))})});
+    cart=[];saveCart();
+    document.getElementById('cartOverlay').classList.remove('open');
+    showToast('🎉 '+T[lang].orderSuccess);
+  }catch(e){showToast('❌ خطأ، حاول مجدداً')}
+  finally{btn.disabled=false;btn.textContent=T[lang].placeOrder}
+}
+
 function openTrack(){document.getElementById('trackModal').classList.add('open')}
 function closeTrack(){document.getElementById('trackModal').classList.remove('open');document.getElementById('trackResults').innerHTML='';document.getElementById('trackPhone').value=''}
-async function searchOrders(){const phone=document.getElementById('trackPhone').value.trim();if(!phone)return;const container=document.getElementById('trackResults');container.innerHTML='<div class="loading"><div class="spinner"></div></div>';try{const orders=await fetch(`${API}/orders?phone=${encodeURIComponent(phone)}`).then(r=>r.json());if(!orders.length){container.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>${T[lang].noOrders}</p></div>`;return}const steps=['pending','confirmed','preparing','delivering','delivered'];container.innerHTML=orders.map(o=>{const idx=steps.indexOf(o.status);return`<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700">${o.order_number}</span><span style="color:var(--green);font-weight:700">${o.total} ${T[lang].curr}</span></div><div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">${new Date(o.created_at).toLocaleString(lang==='ar'?'ar-EG':'en-US')}</div><div class="track-steps">${steps.map((s,i)=>`<div class="step ${i<=idx?'done':''} ${i===idx?'active':''}"><div class="step-dot">${T[lang].statusIcons[s]}</div><div class="step-info"><h4>${T[lang].statuses[s]}</h4></div></div>`).join('')}</div></div>`}).join('')}catch(e){container.innerHTML='<p style="color:var(--orange);text-align:center">حدث خطأ</p>'}}
+
+async function searchOrders(){
+  const phone=document.getElementById('trackPhone').value.trim();
+  if(!phone)return;
+  const container=document.getElementById('trackResults');
+  container.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const orders=await fetch(`${API}/orders?phone=${encodeURIComponent(phone)}`).then(r=>r.json());
+    if(!orders.length){container.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>${T[lang].noOrders}</p></div>`;return}
+    const steps=['pending','confirmed','preparing','delivering','delivered'];
+    container.innerHTML=orders.map(o=>{
+      const idx=steps.indexOf(o.status);
+      return`<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700">${o.order_number}</span><span style="color:var(--green);font-weight:700">${o.total} ${T[lang].curr}</span></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">${new Date(o.created_at).toLocaleString(lang==='ar'?'ar-EG':'en-US')}</div>
+        <div class="track-steps">${steps.map((s,i)=>`<div class="step ${i<=idx?'done':''} ${i===idx?'active':''}"><div class="step-dot">${T[lang].statusIcons[s]}</div><div class="step-info"><h4>${T[lang].statuses[s]}</h4></div></div>`).join('')}</div>
+      </div>`;
+    }).join('');
+  }catch(e){container.innerHTML='<p style="color:var(--orange);text-align:center">حدث خطأ</p>'}
+}
+
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
 function scrollToTop(){window.scrollTo({top:0,behavior:'smooth'})}
 function toggleLang(){lang=lang==='ar'?'en':'ar';document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.getElementById('langBtn').textContent=lang==='ar'?'EN':'ع';updateUI();renderProducts();renderCart()}
-function updateUI(){const t=T[lang];['heroTag','heroSub','catTitle','productsTitle','cartLabel','tabCart','tabDetails','continueBtn','backBtn','nameLabel','phoneLabel','addressLabel','notesLabel','payLabel','cashLabel','elecLabel','placeOrderBtn','subLabel','delivLabel','totalLabel','totalLabel2','emptyCartText','emptyText','trackTitle','trackPhoneLabel','trackBtn','navHome','navTrack','navCart'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t[id]||t.placeOrder||''});document.getElementById('heroTitle').innerHTML=t.heroTitle;document.getElementById('searchInput').placeholder=t.search;document.querySelectorAll('.curr').forEach(el=>el.textContent=t.curr);const firstCat=document.querySelector('#catsContainer .cat-pill');if(firstCat)firstCat.querySelector('span').textContent=t.allCat}
+function updateUI(){
+  const t=T[lang];
+  ['heroTag','heroSub','catTitle','productsTitle','cartLabel','tabCart','tabDetails','continueBtn','backBtn','nameLabel','phoneLabel','addressLabel','notesLabel','placeOrderBtn','subLabel','delivLabel','totalLabel','totalLabel2','emptyCartText','emptyText','trackTitle','trackPhoneLabel','trackBtn','navHome','navTrack','navCart'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t[id]||''});
+  document.getElementById('heroTitle').innerHTML=t.heroTitle;
+  document.getElementById('searchInput').placeholder=t.search;
+  document.querySelectorAll('.curr').forEach(el=>el.textContent=t.curr);
+  const firstCat=document.querySelector('#catsContainer .cat-pill');
+  if(firstCat)firstCat.querySelector('span').textContent=t.allCat;
+}
 init();
 </script>
+  <div style="text-align:center;padding:16px 0 80px;font-size:12px;color:var(--text-muted)">
+  Developed by 
+  <a href="https://wa.me/201550036259" target="_blank" 
+     style="color:var(--green);text-decoration:none;font-weight:700">
+    Moaz
+  </a>
+</div>
 </body>
 </html>
