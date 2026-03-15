@@ -135,6 +135,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <button class="nav-link" data-page="orders" onclick="navTo('orders',this)"><span class="nav-icon">📦</span> الطلبات <span class="nav-badge" id="pendingBadge" style="display:none">0</span></button>
       <button class="nav-link" data-page="products" onclick="navTo('products',this)"><span class="nav-icon">🛍️</span> المنتجات</button>
       <button class="nav-link" data-page="categories" onclick="navTo('categories',this)"><span class="nav-icon">📂</span> التصنيفات</button>
+      <button class="nav-link" data-page="reports" onclick="navTo('reports',this)"><span class="nav-icon">📈</span> التقارير</button>
       <button class="nav-link" data-page="settings" onclick="navTo('settings',this)"><span class="nav-icon">⚙️</span> الإعدادات</button>
     </nav>
     <div class="sidebar-footer">
@@ -211,8 +212,8 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 
 <script>
 const API='/api';
-const ADMIN_EMAIL='admin@futurefood.com'; // ⚠️ غيّره
-const ADMIN_PASS='admin123';              // ⚠️ غيّره
+let ADMIN_EMAIL=localStorage.getItem('ff_email')||'admin@futurefood.com';
+let ADMIN_PASS=localStorage.getItem('ff_pass')||'admin123';
 
 let currentPage='dashboard',allOrders=[],allProducts=[],allCategories=[],editingProductId=null,editingCatId=null,storeOpen=true,orderFilter='all';
 
@@ -229,14 +230,14 @@ async function loadCategories(){try{allCategories=await fetch(`${API}/categories
 
 // NAV
 function navTo(page,btn){document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));btn.classList.add('active');closeSidebar();loadPage(page)}
-async function loadPage(page){currentPage=page;const titles={dashboard:'الرئيسية',orders:'الطلبات',products:'المنتجات',categories:'التصنيفات',settings:'الإعدادات'};document.getElementById('pageTitle').textContent=titles[page]||'';document.getElementById('pageContent').innerHTML='<div class="loading"><div class="spinner"></div></div>';if(page==='dashboard')await renderDashboard();else if(page==='orders')await renderOrders();else if(page==='products')await renderProducts();else if(page==='categories')await renderCategories();else if(page==='settings')await renderSettings()}
+async function loadPage(page){currentPage=page;const titles={dashboard:'الرئيسية',orders:'الطلبات',products:'المنتجات',categories:'التصنيفات',reports:'التقارير',settings:'الإعدادات'};document.getElementById('pageTitle').textContent=titles[page]||'';document.getElementById('pageContent').innerHTML='<div class="loading"><div class="spinner"></div></div>';if(page==='dashboard')await renderDashboard();else if(page==='orders')await renderOrders();else if(page==='products')await renderProducts();else if(page==='categories')await renderCategories();else if(page==='reports')await renderReports();else if(page==='settings')await renderSettings()}
 
 // DASHBOARD
 async function renderDashboard(){try{const[orders,products]=await Promise.all([fetch(`${API}/orders`).then(r=>r.json()),fetch(`${API}/products`).then(r=>r.json())]);allOrders=orders;allProducts=products;const pending=orders.filter(o=>o.status==='pending').length;const today=orders.filter(o=>new Date(o.created_at).toDateString()===new Date().toDateString());const todayRev=today.reduce((s,o)=>o.status!=='cancelled'?s+parseFloat(o.total):s,0);const totalRev=orders.reduce((s,o)=>o.status!=='cancelled'?s+parseFloat(o.total):s,0);updatePendingBadge(pending);document.getElementById('pageContent').innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-icon" style="background:rgba(255,193,7,0.15)">⏳</div><div><h3>${pending}</h3><p>بانتظار التأكيد</p></div></div><div class="stat-card"><div class="stat-icon" style="background:rgba(0,200,83,0.15)">📦</div><div><h3>${today.length}</h3><p>طلبات اليوم</p></div></div><div class="stat-card"><div class="stat-icon" style="background:rgba(33,150,243,0.15)">💰</div><div><h3>${todayRev.toFixed(0)} ج.م</h3><p>مبيعات اليوم</p></div></div><div class="stat-card"><div class="stat-icon" style="background:rgba(156,39,176,0.15)">🏦</div><div><h3>${totalRev.toFixed(0)} ج.م</h3><p>إجمالي المبيعات</p></div></div></div><div class="card"><div class="card-header"><div class="card-title">آخر الطلبات</div></div><div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>الإجمالي</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>${orders.slice(0,8).map(o=>`<tr><td><span style="font-family:monospace;font-size:12px">${o.order_number}</span></td><td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td>${statusBadge(o.status)}</td><td>${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅ تأكيد</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:`<button class="action-btn" onclick="viewOrder('${o.id}')">عرض</button>`}</td></tr>`).join('')}</tbody></table></div></div>`}catch(e){document.getElementById('pageContent').innerHTML='<div class="empty-state"><div style="font-size:48px">⚠️</div><p>خطأ في تحميل البيانات — تحقق من إعدادات API</p></div>'}}
 
 // ORDERS
 async function renderOrders(){try{allOrders=await fetch(`${API}/orders`).then(r=>r.json());buildOrdersTable()}catch(e){}}
-function buildOrdersTable(){const orders=orderFilter==='all'?allOrders:allOrders.filter(o=>o.status===orderFilter);const fl=['all','pending','confirmed','preparing','delivering','delivered','cancelled'];const fl2={all:'الكل',pending:'جديد',confirmed:'مؤكد',preparing:'يُحضَّر',delivering:'في الطريق',delivered:'مُسلَّم',cancelled:'ملغي'};document.getElementById('pageContent').innerHTML=`<div class="card"><div class="card-header"><div class="card-title">الطلبات (${orders.length})</div><div class="filters">${fl.map(f=>`<button class="filter-btn ${orderFilter===f?'active':''}" onclick="setOrderFilter('${f}')">${fl2[f]}</button>`).join('')}</div></div><div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>العنوان</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>التاريخ</th><th>الإجراء</th></tr></thead><tbody>${orders.length?orders.map(o=>`<tr><td><span style="font-family:monospace;font-size:11px">${o.order_number}</span></td><td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td><td style="max-width:140px;font-size:12px">${o.customer_address}</td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td style="font-size:12px">${o.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</td><td>${statusBadge(o.status)}</td><td style="font-size:11px;color:var(--text-muted)">${new Date(o.created_at).toLocaleString('ar-EG')}</td><td><button class="action-btn" onclick="viewOrder('${o.id}')">👁</button>${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:''}${o.status==='confirmed'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','preparing')">👨‍🍳</button>`:''}${o.status==='preparing'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivering')">🚴</button>`:''}${o.status==='delivering'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivered')">🎉</button>`:''}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`}
+function buildOrdersTable(){const orders=orderFilter==='all'?allOrders:allOrders.filter(o=>o.status===orderFilter);const fl=['all','pending','confirmed','preparing','delivering','delivered','cancelled'];const fl2={all:'الكل',pending:'جديد',confirmed:'مؤكد',preparing:'يُحضَّر',delivering:'في الطريق',delivered:'مُسلَّم',cancelled:'ملغي'};document.getElementById('pageContent').innerHTML=`<div class="card"><div class="card-header"><div class="card-title">الطلبات (${orders.length})</div><div class="filters">${fl.map(f=>`<button class="filter-btn ${orderFilter===f?'active':''}" onclick="setOrderFilter('${f}')">${fl2[f]}</button>`).join('')}</div></div><div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>العنوان</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>التاريخ</th><th>الإجراء</th></tr></thead><tbody>${orders.length?orders.map(o=>`<tr><td><span style="font-family:monospace;font-size:11px">${o.order_number}</span></td><td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td><td style="max-width:140px;font-size:12px">${o.customer_address}</td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td style="font-size:12px">${o.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</td><td>${statusBadge(o.status)}</td><td style="font-size:11px;color:var(--text-muted)">${new Date(o.created_at).toLocaleString('ar-EG')}</td><td><button class="action-btn" onclick="viewOrder('${o.id}')">👁</button><button class="action-btn" onclick="printOrder('${o.id}')">🖨️</button>${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:''}${o.status==='confirmed'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','preparing')">👨‍🍳</button>`:''}${o.status==='preparing'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivering')">🚴</button>`:''}${o.status==='delivering'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivered')">🎉</button>`:''}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`}
 function setOrderFilter(f){orderFilter=f;buildOrdersTable()}
 async function updateOrderStatus(id,status){try{await fetch(`${API}/orders?id=${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});allOrders=allOrders.map(o=>o.id===id?{...o,status}:o);if(currentPage==='orders')buildOrdersTable();else await renderDashboard();showToast('✅ تم تحديث الحالة');updatePendingBadge(allOrders.filter(o=>o.status==='pending').length)}catch(e){showToast('❌ خطأ')}}
 async function viewOrder(id){const order=allOrders.find(o=>o.id===id);if(!order)return;try{const data=await fetch(`${API}/orders?id=${id}`).then(r=>r.json());const items=data.items||[];const sl={pending:'⏳ بانتظار التأكيد',confirmed:'✅ مؤكد',preparing:'👨‍🍳 جارٍ التحضير',delivering:'🚴 في الطريق',delivered:'🎉 تم التوصيل',cancelled:'❌ ملغي'};document.getElementById('orderModalContent').innerHTML=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:900;color:var(--green);margin-bottom:4px">${order.order_number}</div><div>${sl[order.status]}</div></div><div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;display:grid;gap:6px"><div><b>الاسم:</b> ${order.customer_name}</div><div><b>الهاتف:</b> ${order.customer_phone}</div><div><b>العنوان:</b> ${order.customer_address}</div>${order.customer_notes?`<div><b>ملاحظات:</b> ${order.customer_notes}</div>`:''}<div><b>الدفع:</b> ${order.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</div></div><div class="order-items-list">${items.map(i=>`<div class="oi"><span>${i.product_name_ar} × ${i.quantity}</span><span style="color:var(--green);font-weight:700">${i.subtotal} ج.م</span></div>`).join('')}</div><div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:13px;display:grid;gap:6px"><div style="display:flex;justify-content:space-between"><span>المجموع:</span><span>${order.subtotal} ج.م</span></div><div style="display:flex;justify-content:space-between"><span>التوصيل:</span><span>${order.delivery_fee} ج.م</span></div><div style="display:flex;justify-content:space-between;font-size:16px;font-weight:900;color:var(--green);margin-top:6px"><span>الإجمالي:</span><span>${order.total} ج.م</span></div></div>`;document.getElementById('orderModal').classList.add('open')}catch(e){}}
@@ -256,15 +257,159 @@ async function saveCat(){const data={name_ar:document.getElementById('cNameAr').
 async function deleteCat(id){if(!confirm('حذف هذا التصنيف؟'))return;try{await fetch(`${API}/categories?id=${id}`,{method:'DELETE'});showToast('🗑 تم الحذف');await renderCategories()}catch(e){showToast('❌ خطأ')}}
 
 // SETTINGS
-async function renderSettings(){try{const s=await fetch(`${API}/settings`).then(r=>r.json());document.getElementById('pageContent').innerHTML=`<div class="card" style="padding:24px"><div class="card-title" style="margin-bottom:20px">⚙️ إعدادات المتجر</div><div class="settings-grid"><div class="form-group"><label class="form-label">اسم المتجر (عربي)</label><input class="form-inp" id="sNameAr" value="${s?.store_name_ar||''}"></div><div class="form-group"><label class="form-label">اسم المتجر (إنجليزي)</label><input class="form-inp" id="sNameEn" value="${s?.store_name_en||''}"></div><div class="form-group"><label class="form-label">رقم الهاتف</label><input class="form-inp" id="sPhone" value="${s?.store_phone||''}"></div><div class="form-group"><label class="form-label">رقم واتساب</label><input class="form-inp" id="sWhatsapp" value="${s?.whatsapp||''}"></div><div class="form-group"><label class="form-label">رسوم التوصيل (ج.م)</label><input class="form-inp" id="sDelivery" type="number" value="${s?.delivery_fee||10}"></div><div class="form-group"><label class="form-label">الحد الأدنى للطلب (ج.م)</label><input class="form-inp" id="sMinOrder" type="number" value="${s?.min_order||50}"></div></div><button class="btn-save" style="margin-top:8px;width:auto;padding:12px 32px" onclick="saveSettings()">💾 حفظ الإعدادات</button></div>`}catch(e){}}
-async function saveSettings(){try{await fetch(`${API}/settings`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_name_ar:document.getElementById('sNameAr').value.trim(),store_name_en:document.getElementById('sNameEn').value.trim(),store_phone:document.getElementById('sPhone').value.trim(),whatsapp:document.getElementById('sWhatsapp').value.trim(),delivery_fee:parseFloat(document.getElementById('sDelivery').value)||10,min_order:parseFloat(document.getElementById('sMinOrder').value)||50})});showToast('✅ تم حفظ الإعدادات')}catch(e){showToast('❌ خطأ')}}
+async function renderSettings(){
+  try{
+    const s=await fetch(`${API}/settings`).then(r=>r.json());
+    document.getElementById('pageContent').innerHTML=`
+    <div class="card" style="padding:24px;margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:20px">⚙️ إعدادات المتجر</div>
+      <div class="settings-grid">
+        <div class="form-group"><label class="form-label">اسم المتجر (عربي)</label><input class="form-inp" id="sNameAr" value="${s?.store_name_ar||''}"></div>
+        <div class="form-group"><label class="form-label">اسم المتجر (إنجليزي)</label><input class="form-inp" id="sNameEn" value="${s?.store_name_en||''}"></div>
+        <div class="form-group"><label class="form-label">رقم الهاتف</label><input class="form-inp" id="sPhone" value="${s?.store_phone||''}"></div>
+        <div class="form-group"><label class="form-label">رقم واتساب</label><input class="form-inp" id="sWhatsapp" value="${s?.whatsapp||''}"></div>
+        <div class="form-group"><label class="form-label">رسوم التوصيل (ج.م)</label><input class="form-inp" id="sDelivery" type="number" value="${s?.delivery_fee||10}"></div>
+        <div class="form-group"><label class="form-label">الحد الأدنى للطلب (ج.م)</label><input class="form-inp" id="sMinOrder" type="number" value="${s?.min_order||50}"></div>
+      </div>
+      <button class="btn-save" style="margin-top:8px;width:auto;padding:12px 32px" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+    </div>
+    <div class="card" style="padding:24px">
+      <div class="card-title" style="margin-bottom:20px">🔐 تغيير بيانات الدخول</div>
+      <div class="settings-grid">
+        <div class="form-group"><label class="form-label">البريد الإلكتروني الجديد</label><input class="form-inp" id="newEmail" placeholder="admin@example.com"></div>
+        <div class="form-group"><label class="form-label">كلمة المرور الجديدة</label><input class="form-inp" type="password" id="newPass" placeholder="كلمة مرور قوية"></div>
+      </div>
+      <div class="form-group"><label class="form-label">كلمة المرور الحالية (للتأكيد)</label><input class="form-inp" type="password" id="currentPass" placeholder="أدخل كلمة المرور الحالية"></div>
+      <button class="btn-save" style="margin-top:8px;width:auto;padding:12px 32px" onclick="changeCredentials()">🔐 تحديث بيانات الدخول</button>
+    </div>`;
+  }catch(e){}
+}
+async function saveSettings(){
+  try{
+    await fetch(`${API}/settings`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_name_ar:document.getElementById('sNameAr').value.trim(),store_name_en:document.getElementById('sNameEn').value.trim(),store_phone:document.getElementById('sPhone').value.trim(),whatsapp:document.getElementById('sWhatsapp').value.trim(),delivery_fee:parseFloat(document.getElementById('sDelivery').value)||10,min_order:parseFloat(document.getElementById('sMinOrder').value)||50})});
+    showToast('✅ تم حفظ الإعدادات');
+  }catch(e){showToast('❌ خطأ')}
+}
+function changeCredentials(){
+  const newEmail=document.getElementById('newEmail').value.trim();
+  const newPass=document.getElementById('newPass').value;
+  const currentPass=document.getElementById('currentPass').value;
+  if(currentPass!==ADMIN_PASS){showToast('❌ كلمة المرور الحالية غلط');return}
+  if(!newEmail&&!newPass){showToast('⚠️ أدخل البيانات الجديدة');return}
+  if(newEmail){ADMIN_EMAIL=newEmail;localStorage.setItem('ff_email',newEmail)}
+  if(newPass){ADMIN_PASS=newPass;localStorage.setItem('ff_pass',newPass)}
+  showToast('✅ تم تحديث بيانات الدخول');
+  document.getElementById('newEmail').value='';
+  document.getElementById('newPass').value='';
+  document.getElementById('currentPass').value='';
+}
+
+// REPORTS
+async function renderReports(){
+  try{
+    const orders=await fetch(`${API}/orders`).then(r=>r.json());
+    const delivered=orders.filter(o=>o.status==='delivered');
+    const totalRev=delivered.reduce((s,o)=>s+parseFloat(o.total),0);
+    const avgOrder=delivered.length?totalRev/delivered.length:0;
+
+    // Group by day (last 7 days)
+    const days={};
+    for(let i=6;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      const key=d.toLocaleDateString('ar-EG',{weekday:'short',month:'numeric',day:'numeric'});
+      days[key]={orders:0,revenue:0};
+    }
+    orders.forEach(o=>{
+      const d=new Date(o.created_at);
+      const key=d.toLocaleDateString('ar-EG',{weekday:'short',month:'numeric',day:'numeric'});
+      if(days[key]&&o.status!=='cancelled'){days[key].orders++;days[key].revenue+=parseFloat(o.total)}
+    });
+
+    const maxRev=Math.max(...Object.values(days).map(d=>d.revenue),1);
+
+    document.getElementById('pageContent').innerHTML=`
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card"><div class="stat-icon" style="background:rgba(0,200,83,0.15)">✅</div><div><h3>${delivered.length}</h3><p>طلبات مكتملة</p></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:rgba(33,150,243,0.15)">💰</div><div><h3>${totalRev.toFixed(0)} ج.م</h3><p>إجمالي الإيرادات</p></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:rgba(156,39,176,0.15)">📊</div><div><h3>${avgOrder.toFixed(0)} ج.م</h3><p>متوسط قيمة الطلب</p></div></div>
+      <div class="stat-card"><div class="stat-icon" style="background:rgba(255,193,7,0.15)">❌</div><div><h3>${orders.filter(o=>o.status==='cancelled').length}</h3><p>طلبات ملغية</p></div></div>
+    </div>
+    <div class="card" style="padding:24px">
+      <div class="card-title" style="margin-bottom:20px">📈 المبيعات — آخر 7 أيام</div>
+      <div style="display:flex;align-items:flex-end;gap:8px;height:160px;margin-bottom:12px">
+        ${Object.entries(days).map(([day,data])=>`
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="font-size:11px;color:var(--green);font-weight:700">${data.revenue>0?data.revenue.toFixed(0):''}</div>
+            <div style="width:100%;background:${data.revenue>0?'var(--green)':'var(--dark3)'};border-radius:6px 6px 0 0;height:${Math.max((data.revenue/maxRev)*120,4)}px;transition:all 0.3s"></div>
+            <div style="font-size:10px;color:var(--text-muted);text-align:center">${day}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">تفاصيل الطلبات المكتملة</div></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>الإجمالي</th><th>التاريخ</th></tr></thead>
+        <tbody>${delivered.slice(0,20).map(o=>`<tr><td style="font-family:monospace;font-size:11px">${o.order_number}</td><td>${o.customer_name}</td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td style="font-size:11px;color:var(--text-muted)">${new Date(o.created_at).toLocaleDateString('ar-EG')}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }catch(e){}
+}
+
+// PRINT ORDER
+async function printOrder(id){
+  const order=allOrders.find(o=>o.id===id);
+  if(!order)return;
+  try{
+    const data=await fetch(`${API}/orders?id=${id}`).then(r=>r.json());
+    const items=data.items||[];
+    const w=window.open('','_blank','width=400,height=600');
+    w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>طلب ${order.order_number}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;max-width:380px;margin:0 auto}h2{text-align:center;border-bottom:2px solid #000;padding-bottom:10px}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}.total{font-size:18px;font-weight:bold;border-top:2px solid #000;margin-top:8px;padding-top:8px}.info{font-size:13px;margin-bottom:12px;line-height:1.8}.center{text-align:center}</style>
+    </head><body>
+    <h2>🛒 Future Foods</h2>
+    <div class="center" style="font-size:13px;color:#666;margin-bottom:16px">${new Date(order.created_at).toLocaleString('ar-EG')}</div>
+    <div class="info">
+      <b>رقم الطلب:</b> ${order.order_number}<br>
+      <b>العميل:</b> ${order.customer_name}<br>
+      <b>الهاتف:</b> ${order.customer_phone}<br>
+      <b>العنوان:</b> ${order.customer_address}<br>
+      ${order.customer_notes?`<b>ملاحظات:</b> ${order.customer_notes}<br>`:''}
+    </div>
+    <hr>
+    ${items.map(i=>`<div class="row"><span>${i.product_name_ar} × ${i.quantity}</span><span>${i.subtotal} ج.م</span></div>`).join('')}
+    <div class="row total"><span>المجموع</span><span>${order.subtotal} ج.م</span></div>
+    <div class="row"><span>التوصيل</span><span>${order.delivery_fee} ج.م</span></div>
+    <div class="row total"><span>الإجمالي</span><span>${order.total} ج.م</span></div>
+    <div class="center" style="margin-top:20px;font-size:12px;color:#999">شكراً لتسوقكم معنا 🙏</div>
+    <script>window.onload=()=>{window.print();window.close()}<\/script>
+    </body></html>`);
+    w.document.close();
+  }catch(e){showToast('❌ خطأ في الطباعة')}
+}
 
 // STORE TOGGLE
 async function toggleStore(){storeOpen=!storeOpen;try{await fetch(`${API}/settings`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_open:storeOpen})});updateStoreToggle();showToast(storeOpen?'✅ المحل الآن مفتوح':'🔒 تم إغلاق المحل')}catch(e){storeOpen=!storeOpen}}
 function updateStoreToggle(){const btn=document.getElementById('storeToggle'),label=document.getElementById('storeStatusLabel');btn.classList.toggle('on',storeOpen);label.textContent=storeOpen?'المحل: مفتوح':'المحل: مغلق'}
 
+// SOUND NOTIFICATION
+function playNotifSound(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [523,659,784].forEach((freq,i)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=freq;o.type='sine';
+      g.gain.setValueAtTime(0.3,ctx.currentTime+i*0.15);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.15+0.3);
+      o.start(ctx.currentTime+i*0.15);
+      o.stop(ctx.currentTime+i*0.15+0.3);
+    });
+  }catch(e){}
+}
+
 // REALTIME POLL
-function startRealtime(){setInterval(async()=>{if(currentPage==='orders'||currentPage==='dashboard'){try{const newOrders=await fetch(`${API}/orders`).then(r=>r.json());const newPending=newOrders.filter(o=>o.status==='pending').length;const oldPending=allOrders.filter(o=>o.status==='pending').length;if(newPending>oldPending)showToast('🔔 طلب جديد!');allOrders=newOrders;updatePendingBadge(newPending);if(currentPage==='orders')buildOrdersTable();else if(currentPage==='dashboard')renderDashboard()}catch(e){}}},15000)}
+function startRealtime(){setInterval(async()=>{if(currentPage==='orders'||currentPage==='dashboard'){try{const newOrders=await fetch(`${API}/orders`).then(r=>r.json());const newPending=newOrders.filter(o=>o.status==='pending').length;const oldPending=allOrders.filter(o=>o.status==='pending').length;if(newPending>oldPending){playNotifSound();showToast('🔔 طلب جديد!')}allOrders=newOrders;updatePendingBadge(newPending);if(currentPage==='orders')buildOrdersTable();else if(currentPage==='dashboard')renderDashboard()}catch(e){}}},15000)}
 
 // HELPERS
 function statusBadge(status){const map={pending:'badge-pending ⏳ بانتظار',confirmed:'badge-confirmed ✅ مؤكد',preparing:'badge-preparing 👨‍🍳 يُحضَّر',delivering:'badge-delivering 🚴 في الطريق',delivered:'badge-delivered 🎉 مُسلَّم',cancelled:'badge-cancelled ❌ ملغي'};const[cls,...rest]=(map[status]||'badge-pending غير معروف').split(' ');return`<span class="badge ${cls}">${rest.join(' ')}</span>`}
