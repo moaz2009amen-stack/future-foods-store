@@ -238,7 +238,104 @@ async function renderDashboard(){try{const[orders,products]=await Promise.all([f
 
 // ORDERS
 async function renderOrders(){try{allOrders=await fetch(`${API}/orders`).then(r=>r.json());buildOrdersTable()}catch(e){}}
-function buildOrdersTable(){const orders=orderFilter==='all'?allOrders:allOrders.filter(o=>o.status===orderFilter);const fl=['all','pending','confirmed','preparing','delivering','delivered','cancelled'];const fl2={all:'الكل',pending:'جديد',confirmed:'مؤكد',preparing:'يُحضَّر',delivering:'في الطريق',delivered:'مُسلَّم',cancelled:'ملغي'};document.getElementById('pageContent').innerHTML=`<div class="card"><div class="card-header"><div class="card-title">الطلبات (${orders.length})</div><div class="filters">${fl.map(f=>`<button class="filter-btn ${orderFilter===f?'active':''}" onclick="setOrderFilter('${f}')">${fl2[f]}</button>`).join('')}</div></div><div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>العنوان</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>التاريخ</th><th>الإجراء</th></tr></thead><tbody>${orders.length?orders.map(o=>`<tr><td><span style="font-family:monospace;font-size:11px">${o.order_number}</span></td><td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td><td style="max-width:140px;font-size:12px">${o.customer_address}</td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td style="font-size:12px">${o.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</td><td>${statusBadge(o.status)}</td><td style="font-size:11px;color:var(--text-muted)">${new Date(o.created_at).toLocaleString('ar-EG')}</td><td><button class="action-btn" onclick="viewOrder('${o.id}')">👁</button><button class="action-btn" onclick="printOrder('${o.id}')">🖨️</button><button class="action-btn" onclick="notifyWhatsapp('${o.id}')" style="color:#25D366">واتساب</button>${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:''}${o.status==='confirmed'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','preparing')">👨‍🍳</button>`:''}${o.status==='preparing'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivering')">🚴</button>`:''}${o.status==='delivering'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivered')">🎉</button>`:''}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`}
+function buildOrdersTable(){
+  const orders=orderFilter==='all'?allOrders:allOrders.filter(o=>o.status===orderFilter);
+  const fl=['all','pending','confirmed','preparing','delivering','delivered','cancelled'];
+  const fl2={all:'الكل',pending:'جديد',confirmed:'مؤكد',preparing:'يُحضَّر',delivering:'في الطريق',delivered:'مُسلَّم',cancelled:'ملغي'};
+  document.getElementById('pageContent').innerHTML=`
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;justify-content:flex-end">
+    <button class="filter-btn" onclick="exportExcel()" style="border-color:rgba(0,200,83,0.4);color:var(--green)">📊 تصدير Excel</button>
+    <button class="filter-btn" onclick="showBulkDelete()" style="border-color:rgba(244,67,54,0.4);color:var(--red)">🗑 مسح بالتاريخ</button>
+  </div>
+  <div id="bulkDeleteBox" style="display:none;background:var(--dark2);border:1px solid rgba(244,67,54,0.3);border-radius:14px;padding:16px;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--red)">⚠️ مسح الطلبات القديمة</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select id="deleteMonth" class="filter-btn" style="padding:8px 12px">
+        ${Array.from({length:12},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-i);const val=d.toISOString().slice(0,7);const label=d.toLocaleDateString('ar-EG',{year:'numeric',month:'long'});return`<option value="${val}">${label}</option>`}).join('')}
+      </select>
+      <button onclick="bulkDeleteOrders()" style="background:var(--red);border:none;color:#fff;padding:8px 16px;border-radius:8px;font-family:inherit;cursor:pointer;font-size:13px;font-weight:700">مسح طلبات هذا الشهر وما قبله</button>
+      <button onclick="document.getElementById('bulkDeleteBox').style.display='none'" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:8px 12px;border-radius:8px;font-family:inherit;cursor:pointer;font-size:13px">إلغاء</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">الطلبات (${orders.length})</div>
+      <div class="filters">${fl.map(f=>`<button class="filter-btn ${orderFilter===f?'active':''}" onclick="setOrderFilter('${f}')">${fl2[f]}</button>`).join('')}</div>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>العنوان</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>التاريخ</th><th>الإجراء</th></tr></thead>
+      <tbody>${orders.length?orders.map(o=>`
+        <tr>
+          <td><span style="font-family:monospace;font-size:11px">${o.order_number}</span></td>
+          <td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td>
+          <td style="max-width:140px;font-size:12px">${o.customer_address}</td>
+          <td style="color:var(--green);font-weight:700">${o.total} ج.م</td>
+          <td style="font-size:12px">${o.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</td>
+          <td>${statusBadge(o.status)}</td>
+          <td style="font-size:11px;color:var(--text-muted)">${new Date(o.created_at).toLocaleString('ar-EG')}</td>
+          <td>
+            <button class="action-btn" onclick="viewOrder('${o.id}')">👁</button>
+            <button class="action-btn" onclick="printOrder('${o.id}')">🖨️</button>
+            <button class="action-btn" onclick="notifyWhatsapp('${o.id}')" style="color:#25D366">واتساب</button>
+            ${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:''}
+            ${o.status==='confirmed'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','preparing')">👨‍🍳</button>`:''}
+            ${o.status==='preparing'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivering')">🚴</button>`:''}
+            ${o.status==='delivering'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivered')">🎉</button>`:''}
+            <button class="action-btn danger" onclick="deleteOrder('${o.id}')">🗑</button>
+          </td>
+        </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">لا توجد طلبات</td></tr>'}
+      </tbody></table>
+    </div>
+  </div>`;
+}
+
+function showBulkDelete(){
+  const box=document.getElementById('bulkDeleteBox');
+  box.style.display=box.style.display==='none'?'block':'none';
+}
+
+async function deleteOrder(id){
+  if(!confirm('حذف هذا الطلب نهائياً؟'))return;
+  try{
+    await fetch(`${API}/orders?id=${id}`,{method:'DELETE'});
+    allOrders=allOrders.filter(o=>o.id!==id);
+    buildOrdersTable();
+    showToast('🗑 تم حذف الطلب');
+    updatePendingBadge(allOrders.filter(o=>o.status==='pending').length);
+  }catch(e){showToast('❌ خطأ في الحذف')}
+}
+
+async function bulkDeleteOrders(){
+  const month=document.getElementById('deleteMonth').value;
+  if(!confirm(`سيتم حذف كل طلبات شهر ${month} وما قبله. هل أنت متأكد؟`))return;
+  try{
+    const res=await fetch(`${API}/orders?before=${month}`,{method:'DELETE'}).then(r=>r.json());
+    showToast(`🗑 تم حذف ${res.deleted} طلب`);
+    await renderOrders();
+  }catch(e){showToast('❌ خطأ في الحذف')}
+}
+
+function exportExcel(){
+  const orders=orderFilter==='all'?allOrders:allOrders.filter(o=>o.status===orderFilter);
+  if(!orders.length){showToast('⚠️ لا توجد طلبات للتصدير');return}
+  const headers=['رقم الطلب','العميل','الهاتف','العنوان','المجموع','التوصيل','الإجمالي','الدفع','الحالة','التاريخ'];
+  const statusAr={pending:'بانتظار',confirmed:'مؤكد',preparing:'يُحضَّر',delivering:'في الطريق',delivered:'مُسلَّم',cancelled:'ملغي'};
+  const rows=orders.map(o=>[
+    o.order_number,o.customer_name,o.customer_phone,o.customer_address,
+    o.subtotal,o.delivery_fee,o.total,
+    o.payment_method==='cash'?'كاش':'إلكتروني',
+    statusAr[o.status]||o.status,
+    new Date(o.created_at).toLocaleString('ar-EG')
+  ]);
+  const csv=[headers,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const BOM='\uFEFF';
+  const blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`orders-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();URL.revokeObjectURL(url);
+  showToast('✅ تم تصدير الطلبات');
+}
 function setOrderFilter(f){orderFilter=f;buildOrdersTable()}
 async function updateOrderStatus(id,status){
   try{
