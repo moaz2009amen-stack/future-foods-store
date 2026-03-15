@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Future Foods | فيوتشر فودز</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00C853">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Future Foods">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -205,13 +210,26 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.92);backdrop
       <div class="form-group"><label class="form-label" id="phoneLabel">رقم الهاتف *</label><input class="form-input" id="custPhone" placeholder="01xxxxxxxxx" type="tel"></div>
       <div class="form-group"><label class="form-label" id="addressLabel">العنوان *</label><input class="form-input" id="custAddress" placeholder="الشارع / المنطقة / الدور / الشقة"></div>
       <div class="form-group"><label class="form-label" id="notesLabel">ملاحظات (اختياري)</label><textarea class="form-textarea" id="custNotes" placeholder="أي تعليمات خاصة..."></textarea></div>
+      <!-- COUPON -->
+      <div class="form-group">
+        <label class="form-label" id="couponLabel">كوبون الخصم</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="couponCode" placeholder="أدخل الكود..." style="flex:1;text-transform:uppercase">
+          <button onclick="applyCoupon()" style="background:var(--dark3);border:1px solid var(--border);color:var(--text);padding:0 16px;border-radius:10px;font-family:inherit;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap" id="couponBtn">تطبيق</button>
+        </div>
+        <div id="couponMsg" style="font-size:12px;margin-top:6px"></div>
+      </div>
       <div class="form-group">
         <div style="background:rgba(0,200,83,0.08);border:1px solid rgba(0,200,83,0.2);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">
           <span style="font-size:24px">💵</span>
           <div><div style="font-size:14px;font-weight:700">الدفع عند الاستلام</div><div style="font-size:12px;color:var(--text-muted)">كاش فقط</div></div>
         </div>
       </div>
-      <div class="cart-summary"><div class="summary-row total"><span id="totalLabel2">الإجمالي:</span><span><span id="summaryTotal2">0</span> <span class="curr">ج.م</span></span></div></div>
+      <div class="cart-summary">
+        <div class="summary-row total"><span id="totalLabel2">الإجمالي:</span><span><span id="summaryTotal2">0</span> <span class="curr">ج.م</span></span></div>
+        <div class="summary-row" id="discountRow" style="display:none;color:#00C853"><span id="discountLabel">خصم الكوبون:</span><span>-<span id="discountAmt">0</span> <span class="curr">ج.م</span></span></div>
+        <div class="summary-row total" id="finalRow" style="display:none"><span>الإجمالي بعد الخصم:</span><span><span id="finalTotal">0</span> <span class="curr">ج.م</span></span></div>
+      </div>
       <button class="checkout-btn" id="placeOrderBtn" onclick="placeOrder()">تأكيد الطلب 🎉</button>
       <button onclick="goStep(1)" style="width:100%;background:none;border:none;color:var(--text-muted);font-family:inherit;font-size:13px;margin-top:12px;cursor:pointer;padding:8px" id="backBtn">← رجوع للسلة</button>
     </div>
@@ -246,7 +264,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.92);backdrop
 
 <script>
 const API='/api';
+const WHATSAPP='201000000000'; // ⚠️ غيّره من إعدادات الأدمن
 let lang='ar',cart=JSON.parse(localStorage.getItem('ff_cart')||'[]'),allProducts=[],filteredProducts=[],deliveryFee=10;
+let appliedCoupon=null;
 const T={ar:{storeName:'فيوتشر فودز',heroTag:'توصيل سريع لباب بيتك',heroTitle:'تسوّق من <span>بيتك</span><br>واستقبل طلبك بسرعة',heroSub:'أفضل المنتجات الطازجة بأسعار مناسبة',catTitle:'التصنيفات',productsTitle:'المنتجات',allCat:'الكل',search:'ابحث عن منتج...',cartLabel:'السلة',tabCart:'السلة',tabDetails:'التفاصيل',continueBtn:'متابعة الطلب ←',backBtn:'← رجوع للسلة',nameLabel:'الاسم الكامل *',phoneLabel:'رقم الهاتف *',addressLabel:'العنوان *',notesLabel:'ملاحظات (اختياري)',placeOrder:'تأكيد الطلب 🎉',subLabel:'المجموع:',delivLabel:'التوصيل:',totalLabel:'الإجمالي:',emptyCart:'السلة فارغة',emptyProd:'لا توجد منتجات',outOfStock:'نفد المخزون',trackTitle:'تتبع الطلب',trackPhoneLabel:'رقم هاتفك',trackBtn:'بحث 🔍',navHome:'الرئيسية',navTrack:'طلباتي',navCart:'السلة',curr:'ج.م',noOrders:'لا توجد طلبات بهذا الرقم',orderSuccess:'تم تأكيد طلبك بنجاح! 🎉',fillFields:'يرجى تعبئة جميع الحقول',closed:'المحل مغلق حالياً',addToCart:'أضف للسلة',details:'التفاصيل',inStock:'متوفر',statuses:{pending:'قيد الانتظار',confirmed:'تم التأكيد',preparing:'جارٍ التحضير',delivering:'في الطريق',delivered:'تم التوصيل',cancelled:'ملغي'},statusIcons:{pending:'⏳',confirmed:'✅',preparing:'👨‍🍳',delivering:'🚴',delivered:'🎉',cancelled:'❌'}},en:{storeName:'Future Foods',heroTag:'Fast delivery to your door',heroTitle:'Shop from <span>Home</span><br>Receive orders fast',heroSub:'Best fresh products at great prices',catTitle:'Categories',productsTitle:'Products',allCat:'All',search:'Search products...',cartLabel:'Cart',tabCart:'Cart',tabDetails:'Details',continueBtn:'Continue →',backBtn:'← Back',nameLabel:'Full Name *',phoneLabel:'Phone Number *',addressLabel:'Address *',notesLabel:'Notes (optional)',placeOrder:'Place Order 🎉',subLabel:'Subtotal:',delivLabel:'Delivery:',totalLabel:'Total:',emptyCart:'Cart is empty',emptyProd:'No products found',outOfStock:'Out of Stock',trackTitle:'Track Order',trackPhoneLabel:'Your Phone Number',trackBtn:'Search 🔍',navHome:'Home',navTrack:'My Orders',navCart:'Cart',curr:'EGP',noOrders:'No orders found',orderSuccess:'Order placed successfully! 🎉',fillFields:'Please fill all required fields',closed:'Store is currently closed',addToCart:'Add to Cart',details:'Details',inStock:'In Stock',statuses:{pending:'Pending',confirmed:'Confirmed',preparing:'Preparing',delivering:'On the way',delivered:'Delivered',cancelled:'Cancelled'},statusIcons:{pending:'⏳',confirmed:'✅',preparing:'👨‍🍳',delivering:'🚴',delivered:'🎉',cancelled:'❌'}}};
 
 async function init(){updateUI();updateCartBadge();await loadSettings();await loadCategories();await loadProducts()}
@@ -356,9 +376,59 @@ function renderCart(){
   document.getElementById('summaryTotal2').textContent=total.toFixed(2);
 }
 
+// ===== COUPON =====
+async function applyCoupon(){
+  const code=document.getElementById('couponCode').value.trim();
+  const msg=document.getElementById('couponMsg');
+  if(!code){msg.textContent='';return}
+  try{
+    const c=await fetch(`${API}/coupons?code=${encodeURIComponent(code)}`).then(r=>r.json());
+    if(c.error){msg.style.color='var(--orange)';msg.textContent='❌ '+c.error;appliedCoupon=null;updateCouponDisplay();return}
+    const subtotal=cart.reduce((s,x)=>s+x.price*x.qty,0)+deliveryFee;
+    if(c.min_order&&subtotal<parseFloat(c.min_order)){
+      msg.style.color='var(--orange)';
+      msg.textContent=`❌ الحد الأدنى للطلب ${c.min_order} ج.م`;
+      appliedCoupon=null;updateCouponDisplay();return;
+    }
+    appliedCoupon=c;
+    msg.style.color='var(--green)';
+    msg.textContent=`✅ تم تطبيق خصم ${c.discount_type==='percent'?c.discount_value+'%':c.discount_value+' ج.م'}`;
+    updateCouponDisplay();
+  }catch(e){msg.style.color='var(--orange)';msg.textContent='❌ خطأ في التحقق'}
+}
+
+function calcDiscount(total){
+  if(!appliedCoupon)return 0;
+  if(appliedCoupon.discount_type==='percent')return Math.min(total*parseFloat(appliedCoupon.discount_value)/100,total);
+  return Math.min(parseFloat(appliedCoupon.discount_value),total);
+}
+
+function updateCouponDisplay(){
+  const subtotal=cart.reduce((s,x)=>s+x.price*x.qty,0);
+  const total=subtotal+deliveryFee;
+  const discount=calcDiscount(total);
+  const final=total-discount;
+  document.getElementById('summaryTotal2').textContent=total.toFixed(2);
+  if(discount>0){
+    document.getElementById('discountRow').style.display='flex';
+    document.getElementById('finalRow').style.display='flex';
+    document.getElementById('discountAmt').textContent=discount.toFixed(2);
+    document.getElementById('finalTotal').textContent=final.toFixed(2);
+  }else{
+    document.getElementById('discountRow').style.display='none';
+    document.getElementById('finalRow').style.display='none';
+  }
+}
+
 function openCart(){document.getElementById('cartOverlay').classList.add('open');goStep(1);renderCart()}
 function closeCartIfOutside(e){if(e.target===document.getElementById('cartOverlay'))document.getElementById('cartOverlay').classList.remove('open')}
-function goStep(n){document.getElementById('step1').style.display=n===1?'block':'none';document.getElementById('step2').style.display=n===2?'block':'none';document.getElementById('tab1').classList.toggle('active',n===1);document.getElementById('tab2').classList.toggle('active',n===2)}
+function goStep(n){
+  document.getElementById('step1').style.display=n===1?'block':'none';
+  document.getElementById('step2').style.display=n===2?'block':'none';
+  document.getElementById('tab1').classList.toggle('active',n===1);
+  document.getElementById('tab2').classList.toggle('active',n===2);
+  if(n===2)updateCouponDisplay();
+}
 
 async function placeOrder(){
   const name=document.getElementById('custName').value.trim(),phone=document.getElementById('custPhone').value.trim(),address=document.getElementById('custAddress').value.trim(),notes=document.getElementById('custNotes').value.trim();
@@ -366,9 +436,17 @@ async function placeOrder(){
   const btn=document.getElementById('placeOrderBtn');btn.disabled=true;btn.textContent='...';
   const subtotal=cart.reduce((s,x)=>s+x.price*x.qty,0);
   const total=subtotal+deliveryFee;
+  const discount=calcDiscount(total);
+  const finalTotal=total-discount;
   try{
-    await fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_name:name,customer_phone:phone,customer_address:address,customer_notes:notes,payment_method:'cash',subtotal,delivery_fee:deliveryFee,total,items:cart.map(item=>({product_id:item.id,product_name_ar:item.name_ar,product_name_en:item.name_en,price:item.price,quantity:item.qty,subtotal:item.price*item.qty}))})});
-    cart=[];saveCart();
+    const order=await fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_name:name,customer_phone:phone,customer_address:address,customer_notes:notes,payment_method:'cash',subtotal,delivery_fee:deliveryFee,total:finalTotal,items:cart.map(item=>({product_id:item.id,product_name_ar:item.name_ar,product_name_en:item.name_en,price:item.price,quantity:item.qty,subtotal:item.price*item.qty}))})}).then(r=>r.json());
+
+    // increment coupon usage
+    if(appliedCoupon){
+      await fetch(`${API}/coupons?id=${appliedCoupon.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({use:true})}).catch(()=>{});
+    }
+
+    cart=[];saveCart();appliedCoupon=null;
     document.getElementById('cartOverlay').classList.remove('open');
     showToast('🎉 '+T[lang].orderSuccess);
   }catch(e){showToast('❌ خطأ، حاول مجدداً')}
@@ -410,14 +488,14 @@ function updateUI(){
   const firstCat=document.querySelector('#catsContainer .cat-pill');
   if(firstCat)firstCat.querySelector('span').textContent=t.allCat;
 }
+// ===== PWA =====
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
+
 init();
 </script>
-  <div style="text-align:center;padding:16px 0 80px;font-size:12px;color:var(--text-muted)">
-  Developed by 
-  <a href="https://wa.me/201550036259" target="_blank" 
-     style="color:var(--green);text-decoration:none;font-weight:700">
-    Moaz
-  </a>
-</div>
 </body>
 </html>
