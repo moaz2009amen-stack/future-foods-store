@@ -1,0 +1,11 @@
+{
+  "name": "future-foods-store",
+  "version": "1.0.0",
+  "description": "Future Foods Store — Full Stack Supermarket System",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
