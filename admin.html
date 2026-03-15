@@ -135,6 +135,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <button class="nav-link" data-page="orders" onclick="navTo('orders',this)"><span class="nav-icon">📦</span> الطلبات <span class="nav-badge" id="pendingBadge" style="display:none">0</span></button>
       <button class="nav-link" data-page="products" onclick="navTo('products',this)"><span class="nav-icon">🛍️</span> المنتجات</button>
       <button class="nav-link" data-page="categories" onclick="navTo('categories',this)"><span class="nav-icon">📂</span> التصنيفات</button>
+      <button class="nav-link" data-page="coupons" onclick="navTo('coupons',this)"><span class="nav-icon">🎟️</span> الكوبونات</button>
       <button class="nav-link" data-page="reports" onclick="navTo('reports',this)"><span class="nav-icon">📈</span> التقارير</button>
       <button class="nav-link" data-page="settings" onclick="navTo('settings',this)"><span class="nav-icon">⚙️</span> الإعدادات</button>
     </nav>
@@ -230,21 +231,122 @@ async function loadCategories(){try{allCategories=await fetch(`${API}/categories
 
 // NAV
 function navTo(page,btn){document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));btn.classList.add('active');closeSidebar();loadPage(page)}
-async function loadPage(page){currentPage=page;const titles={dashboard:'الرئيسية',orders:'الطلبات',products:'المنتجات',categories:'التصنيفات',reports:'التقارير',settings:'الإعدادات'};document.getElementById('pageTitle').textContent=titles[page]||'';document.getElementById('pageContent').innerHTML='<div class="loading"><div class="spinner"></div></div>';if(page==='dashboard')await renderDashboard();else if(page==='orders')await renderOrders();else if(page==='products')await renderProducts();else if(page==='categories')await renderCategories();else if(page==='reports')await renderReports();else if(page==='settings')await renderSettings()}
+async function loadPage(page){currentPage=page;const titles={dashboard:'الرئيسية',orders:'الطلبات',products:'المنتجات',categories:'التصنيفات',coupons:'الكوبونات',reports:'التقارير',settings:'الإعدادات'};document.getElementById('pageTitle').textContent=titles[page]||'';document.getElementById('pageContent').innerHTML='<div class="loading"><div class="spinner"></div></div>';if(page==='dashboard')await renderDashboard();else if(page==='orders')await renderOrders();else if(page==='products')await renderProducts();else if(page==='categories')await renderCategories();else if(page==='coupons')await renderCoupons();else if(page==='reports')await renderReports();else if(page==='settings')await renderSettings()}
 
 // DASHBOARD
 async function renderDashboard(){try{const[orders,products]=await Promise.all([fetch(`${API}/orders`).then(r=>r.json()),fetch(`${API}/products`).then(r=>r.json())]);allOrders=orders;allProducts=products;const pending=orders.filter(o=>o.status==='pending').length;const today=orders.filter(o=>new Date(o.created_at).toDateString()===new Date().toDateString());const todayRev=today.reduce((s,o)=>o.status!=='cancelled'?s+parseFloat(o.total):s,0);const totalRev=orders.reduce((s,o)=>o.status!=='cancelled'?s+parseFloat(o.total):s,0);updatePendingBadge(pending);document.getElementById('pageContent').innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-icon" style="background:rgba(255,193,7,0.15)">⏳</div><div><h3>${pending}</h3><p>بانتظار التأكيد</p></div></div><div class="stat-card"><div class="stat-icon" style="background:rgba(0,200,83,0.15)">📦</div><div><h3>${today.length}</h3><p>طلبات اليوم</p></div></div><div class="stat-card"><div class="stat-icon" style="background:rgba(33,150,243,0.15)">💰</div><div><h3>${todayRev.toFixed(0)} ج.م</h3><p>مبيعات اليوم</p></div></div><div class="stat-card"><div class="stat-icon" style="background:rgba(156,39,176,0.15)">🏦</div><div><h3>${totalRev.toFixed(0)} ج.م</h3><p>إجمالي المبيعات</p></div></div></div><div class="card"><div class="card-header"><div class="card-title">آخر الطلبات</div></div><div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>الإجمالي</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>${orders.slice(0,8).map(o=>`<tr><td><span style="font-family:monospace;font-size:12px">${o.order_number}</span></td><td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td>${statusBadge(o.status)}</td><td>${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅ تأكيد</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:`<button class="action-btn" onclick="viewOrder('${o.id}')">عرض</button>`}</td></tr>`).join('')}</tbody></table></div></div>`}catch(e){document.getElementById('pageContent').innerHTML='<div class="empty-state"><div style="font-size:48px">⚠️</div><p>خطأ في تحميل البيانات — تحقق من إعدادات API</p></div>'}}
 
 // ORDERS
 async function renderOrders(){try{allOrders=await fetch(`${API}/orders`).then(r=>r.json());buildOrdersTable()}catch(e){}}
-function buildOrdersTable(){const orders=orderFilter==='all'?allOrders:allOrders.filter(o=>o.status===orderFilter);const fl=['all','pending','confirmed','preparing','delivering','delivered','cancelled'];const fl2={all:'الكل',pending:'جديد',confirmed:'مؤكد',preparing:'يُحضَّر',delivering:'في الطريق',delivered:'مُسلَّم',cancelled:'ملغي'};document.getElementById('pageContent').innerHTML=`<div class="card"><div class="card-header"><div class="card-title">الطلبات (${orders.length})</div><div class="filters">${fl.map(f=>`<button class="filter-btn ${orderFilter===f?'active':''}" onclick="setOrderFilter('${f}')">${fl2[f]}</button>`).join('')}</div></div><div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>العنوان</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>التاريخ</th><th>الإجراء</th></tr></thead><tbody>${orders.length?orders.map(o=>`<tr><td><span style="font-family:monospace;font-size:11px">${o.order_number}</span></td><td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td><td style="max-width:140px;font-size:12px">${o.customer_address}</td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td style="font-size:12px">${o.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</td><td>${statusBadge(o.status)}</td><td style="font-size:11px;color:var(--text-muted)">${new Date(o.created_at).toLocaleString('ar-EG')}</td><td><button class="action-btn" onclick="viewOrder('${o.id}')">👁</button><button class="action-btn" onclick="printOrder('${o.id}')">🖨️</button>${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:''}${o.status==='confirmed'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','preparing')">👨‍🍳</button>`:''}${o.status==='preparing'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivering')">🚴</button>`:''}${o.status==='delivering'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivered')">🎉</button>`:''}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`}
+function buildOrdersTable(){const orders=orderFilter==='all'?allOrders:allOrders.filter(o=>o.status===orderFilter);const fl=['all','pending','confirmed','preparing','delivering','delivered','cancelled'];const fl2={all:'الكل',pending:'جديد',confirmed:'مؤكد',preparing:'يُحضَّر',delivering:'في الطريق',delivered:'مُسلَّم',cancelled:'ملغي'};document.getElementById('pageContent').innerHTML=`<div class="card"><div class="card-header"><div class="card-title">الطلبات (${orders.length})</div><div class="filters">${fl.map(f=>`<button class="filter-btn ${orderFilter===f?'active':''}" onclick="setOrderFilter('${f}')">${fl2[f]}</button>`).join('')}</div></div><div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>العنوان</th><th>الإجمالي</th><th>الدفع</th><th>الحالة</th><th>التاريخ</th><th>الإجراء</th></tr></thead><tbody>${orders.length?orders.map(o=>`<tr><td><span style="font-family:monospace;font-size:11px">${o.order_number}</span></td><td>${o.customer_name}<br><span style="font-size:11px;color:var(--text-muted)">${o.customer_phone}</span></td><td style="max-width:140px;font-size:12px">${o.customer_address}</td><td style="color:var(--green);font-weight:700">${o.total} ج.م</td><td style="font-size:12px">${o.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</td><td>${statusBadge(o.status)}</td><td style="font-size:11px;color:var(--text-muted)">${new Date(o.created_at).toLocaleString('ar-EG')}</td><td><button class="action-btn" onclick="viewOrder('${o.id}')">👁</button><button class="action-btn" onclick="printOrder('${o.id}')">🖨️</button><button class="action-btn" onclick="notifyWhatsapp('${o.id}')" style="color:#25D366">واتساب</button>${o.status==='pending'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','confirmed')">✅</button><button class="action-btn danger" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`:''}${o.status==='confirmed'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','preparing')">👨‍🍳</button>`:''}${o.status==='preparing'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivering')">🚴</button>`:''}${o.status==='delivering'?`<button class="action-btn" onclick="updateOrderStatus('${o.id}','delivered')">🎉</button>`:''}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">لا توجد طلبات</td></tr>'}</tbody></table></div></div>`}
 function setOrderFilter(f){orderFilter=f;buildOrdersTable()}
-async function updateOrderStatus(id,status){try{await fetch(`${API}/orders?id=${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});allOrders=allOrders.map(o=>o.id===id?{...o,status}:o);if(currentPage==='orders')buildOrdersTable();else await renderDashboard();showToast('✅ تم تحديث الحالة');updatePendingBadge(allOrders.filter(o=>o.status==='pending').length)}catch(e){showToast('❌ خطأ')}}
+async function updateOrderStatus(id,status){
+  try{
+    await fetch(`${API}/orders?id=${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+    allOrders=allOrders.map(o=>o.id===id?{...o,status}:o);
+    if(currentPage==='orders')buildOrdersTable();else await renderDashboard();
+    showToast('✅ تم تحديث الحالة');
+    updatePendingBadge(allOrders.filter(o=>o.status==='pending').length);
+  }catch(e){showToast('❌ خطأ')}
+}
+
+// WHATSAPP NOTIFY
+async function notifyWhatsapp(orderId){
+  const order=allOrders.find(o=>o.id===orderId);
+  if(!order)return;
+  try{
+    const s=await fetch(`${API}/settings`).then(r=>r.json());
+    const wa=s.whatsapp||'201000000000';
+    const msg=encodeURIComponent(`🛒 طلب جديد!\nرقم: ${order.order_number}\nالعميل: ${order.customer_name}\nالهاتف: ${order.customer_phone}\nالعنوان: ${order.customer_address}\nالإجمالي: ${order.total} ج.م`);
+    window.open(`https://wa.me/${wa}?text=${msg}`,'_blank');
+  }catch(e){}
+}
+
+// COUPONS
+async function renderCoupons(){
+  try{
+    const coupons=await fetch(`${API}/coupons`).then(r=>r.json());
+    document.getElementById('pageContent').innerHTML=`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn-primary" style="padding:10px 20px;border-radius:10px;font-size:14px;width:auto" onclick="openCouponForm()">+ إضافة كوبون</button>
+    </div>
+    <div id="couponFormBox" style="display:none" class="card" style="padding:24px;margin-bottom:16px">
+      <div style="padding:20px">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px">إضافة كوبون جديد</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label class="form-label">كود الكوبون *</label><input class="form-inp" id="cpCode" placeholder="SAVE20" style="text-transform:uppercase"></div>
+          <div class="form-group"><label class="form-label">نوع الخصم</label>
+            <select class="form-sel" id="cpType"><option value="percent">نسبة مئوية %</option><option value="fixed">مبلغ ثابت ج.م</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">قيمة الخصم *</label><input class="form-inp" id="cpValue" type="number" placeholder="20"></div>
+          <div class="form-group"><label class="form-label">الحد الأدنى للطلب</label><input class="form-inp" id="cpMin" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">عدد مرات الاستخدام</label><input class="form-inp" id="cpUses" type="number" placeholder="100"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-save" style="width:auto;padding:10px 24px" onclick="saveCoupon()">💾 حفظ</button>
+          <button class="btn-cancel" style="width:auto;padding:10px 24px" onclick="document.getElementById('couponFormBox').style.display='none'">إلغاء</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table><thead><tr><th>الكود</th><th>الخصم</th><th>الحد الأدنى</th><th>الاستخدام</th><th>الحالة</th><th>إجراء</th></tr></thead>
+        <tbody>${coupons.length?coupons.map(c=>`
+          <tr>
+            <td><span style="font-family:monospace;font-weight:700;color:var(--green)">${c.code}</span></td>
+            <td>${c.discount_type==='percent'?c.discount_value+'%':c.discount_value+' ج.م'}</td>
+            <td>${c.min_order} ج.م</td>
+            <td>${c.used_count} / ${c.max_uses}</td>
+            <td><span class="badge ${c.is_active?'badge-confirmed':'badge-cancelled'}">${c.is_active?'✅ فعال':'❌ معطل'}</span></td>
+            <td>
+              <button class="action-btn" onclick="toggleCoupon('${c.id}',${c.is_active})">${c.is_active?'تعطيل':'تفعيل'}</button>
+              <button class="action-btn danger" onclick="deleteCoupon('${c.id}')">🗑</button>
+            </td>
+          </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px">لا توجد كوبونات</td></tr>'}
+        </tbody></table>
+      </div>
+    </div>`;
+  }catch(e){document.getElementById('pageContent').innerHTML='<div class="empty-state"><p>خطأ في التحميل</p></div>'}
+}
+
+function openCouponForm(){document.getElementById('couponFormBox').style.display='block'}
+
+async function saveCoupon(){
+  const code=document.getElementById('cpCode').value.trim().toUpperCase();
+  const value=parseFloat(document.getElementById('cpValue').value);
+  if(!code||!value){showToast('⚠️ أدخل الكود والقيمة');return}
+  try{
+    await fetch(`${API}/coupons`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,discount_type:document.getElementById('cpType').value,discount_value:value,min_order:parseFloat(document.getElementById('cpMin').value)||0,max_uses:parseInt(document.getElementById('cpUses').value)||100})});
+    showToast('✅ تم إضافة الكوبون');
+    await renderCoupons();
+  }catch(e){showToast('❌ الكود موجود بالفعل أو خطأ')}
+}
+
+async function toggleCoupon(id,current){
+  try{
+    await fetch(`${API}/coupons?id=${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:!current})});
+    showToast('✅ تم التحديث');await renderCoupons();
+  }catch(e){showToast('❌ خطأ')}
+}
+
+async function deleteCoupon(id){
+  if(!confirm('حذف هذا الكوبون؟'))return;
+  try{await fetch(`${API}/coupons?id=${id}`,{method:'DELETE'});showToast('🗑 تم الحذف');await renderCoupons()}catch(e){showToast('❌ خطأ')}
+}
 async function viewOrder(id){const order=allOrders.find(o=>o.id===id);if(!order)return;try{const data=await fetch(`${API}/orders?id=${id}`).then(r=>r.json());const items=data.items||[];const sl={pending:'⏳ بانتظار التأكيد',confirmed:'✅ مؤكد',preparing:'👨‍🍳 جارٍ التحضير',delivering:'🚴 في الطريق',delivered:'🎉 تم التوصيل',cancelled:'❌ ملغي'};document.getElementById('orderModalContent').innerHTML=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:900;color:var(--green);margin-bottom:4px">${order.order_number}</div><div>${sl[order.status]}</div></div><div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;display:grid;gap:6px"><div><b>الاسم:</b> ${order.customer_name}</div><div><b>الهاتف:</b> ${order.customer_phone}</div><div><b>العنوان:</b> ${order.customer_address}</div>${order.customer_notes?`<div><b>ملاحظات:</b> ${order.customer_notes}</div>`:''}<div><b>الدفع:</b> ${order.payment_method==='cash'?'💵 كاش':'📱 إلكتروني'}</div></div><div class="order-items-list">${items.map(i=>`<div class="oi"><span>${i.product_name_ar} × ${i.quantity}</span><span style="color:var(--green);font-weight:700">${i.subtotal} ج.م</span></div>`).join('')}</div><div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:13px;display:grid;gap:6px"><div style="display:flex;justify-content:space-between"><span>المجموع:</span><span>${order.subtotal} ج.م</span></div><div style="display:flex;justify-content:space-between"><span>التوصيل:</span><span>${order.delivery_fee} ج.م</span></div><div style="display:flex;justify-content:space-between;font-size:16px;font-weight:900;color:var(--green);margin-top:6px"><span>الإجمالي:</span><span>${order.total} ج.م</span></div></div>`;document.getElementById('orderModal').classList.add('open')}catch(e){}}
 
 // PRODUCTS
 async function renderProducts(){try{allProducts=await fetch(`${API}/products`).then(r=>r.json());buildProductsGrid()}catch(e){}}
-function buildProductsGrid(){document.getElementById('pageContent').innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn-primary" style="padding:10px 20px;border-radius:10px;font-size:14px;width:auto" onclick="openProductModal()">+ إضافة منتج</button></div><div class="admin-products-grid">${allProducts.map(p=>`<div class="admin-product-card"><div class="apc-img">${p.image_url?`<img src="${p.image_url}" alt="">`:'🛒'}${!p.is_available?'<div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--orange)">مخفي</div>':''}</div><div class="apc-body"><div class="apc-name">${p.name_ar}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><div class="apc-price">${p.price} ج.م</div><div class="apc-stock">مخزون: ${p.stock}</div></div><div class="apc-actions"><button class="apc-btn" onclick="openProductModal('${p.id}')">✏️</button><button class="apc-btn" onclick="toggleProductAvail('${p.id}',${p.is_available})">${p.is_available?'🙈':'👁'}</button><button class="apc-btn danger" onclick="deleteProduct('${p.id}')">🗑</button></div></div></div>`).join('')}</div>`}
+function buildProductsGrid(){document.getElementById('pageContent').innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn-primary" style="padding:10px 20px;border-radius:10px;font-size:14px;width:auto" onclick="openProductModal()">+ إضافة منتج</button></div><div class="admin-products-grid">${allProducts.map(p=>`<div class="admin-product-card"><div class="apc-img">${p.image_url?`<img src="${p.image_url}" alt="">`:'🛒'}${!p.is_available?'<div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--orange)">مخفي</div>':''}</div><div class="apc-body"><div class="apc-name">${p.name_ar}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><div class="apc-price">${p.price} ج.م</div><div style="display:flex;align-items:center;gap:4px"><button onclick="quickStock('${p.id}',-1,${p.stock})" style="background:var(--dark4);border:1px solid var(--border);color:var(--text);width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">−</button><span style="font-size:12px;min-width:24px;text-align:center;color:${p.stock<=5?'var(--orange)':'var(--text-muted)'}">${p.stock}</span><button onclick="quickStock('${p.id}',1,${p.stock})" style="background:var(--dark4);border:1px solid var(--border);color:var(--text);width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">+</button></div></div><div class="apc-actions"><button class="apc-btn" onclick="openProductModal('${p.id}')">✏️</button><button class="apc-btn" onclick="toggleProductAvail('${p.id}',${p.is_available})">${p.is_available?'🙈':'👁'}</button><button class="apc-btn danger" onclick="deleteProduct('${p.id}')">🗑</button></div></div></div>`).join('')}</div>`}
+
+async function quickStock(id, delta, current){
+  const newStock=Math.max(0,current+delta);
+  try{
+    await fetch(`${API}/products?id=${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({stock:newStock})});
+    allProducts=allProducts.map(p=>p.id===id?{...p,stock:newStock}:p);
+    buildProductsGrid();
+  }catch(e){showToast('❌ خطأ')}
+}
 function openProductModal(id=null){editingProductId=id;document.getElementById('productModalTitle').textContent=id?'تعديل المنتج':'إضافة منتج';document.getElementById('pCategory').innerHTML=`<option value="">-- بدون تصنيف --</option>`+allCategories.map(c=>`<option value="${c.id}">${c.name_ar}</option>`).join('');if(id){const p=allProducts.find(x=>x.id===id);if(p){document.getElementById('pNameAr').value=p.name_ar||'';document.getElementById('pNameEn').value=p.name_en||'';document.getElementById('pPrice').value=p.price||'';document.getElementById('pOrigPrice').value=p.original_price||'';document.getElementById('pStock').value=p.stock||0;document.getElementById('pUnitAr').value=p.unit_ar||'';document.getElementById('pCategory').value=p.category_id||'';document.getElementById('pImage').value=p.image_url||'';document.getElementById('pDescAr').value=p.description_ar||''}}else{['pNameAr','pNameEn','pOrigPrice','pImage','pDescAr'].forEach(id=>document.getElementById(id).value='');document.getElementById('pPrice').value='';document.getElementById('pStock').value='0';document.getElementById('pUnitAr').value='قطعة';document.getElementById('pCategory').value=''}document.getElementById('productModal').classList.add('open')}
 async function saveProduct(){const data={name_ar:document.getElementById('pNameAr').value.trim(),name_en:document.getElementById('pNameEn').value.trim(),price:parseFloat(document.getElementById('pPrice').value)||0,original_price:parseFloat(document.getElementById('pOrigPrice').value)||null,stock:parseInt(document.getElementById('pStock').value)||0,unit_ar:document.getElementById('pUnitAr').value.trim()||'قطعة',unit_en:'piece',category_id:document.getElementById('pCategory').value||null,image_url:document.getElementById('pImage').value.trim()||null,description_ar:document.getElementById('pDescAr').value.trim()||null};if(!data.name_ar||!data.price){showToast('⚠️ أدخل الاسم والسعر');return}try{if(editingProductId){await fetch(`${API}/products?id=${editingProductId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})}else{data.is_available=true;await fetch(`${API}/products`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})}closeModal('productModal');showToast('✅ تم الحفظ');await renderProducts()}catch(e){showToast('❌ خطأ في الحفظ')}}
 async function toggleProductAvail(id,current){try{await fetch(`${API}/products?id=${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_available:!current})});await renderProducts()}catch(e){}}
