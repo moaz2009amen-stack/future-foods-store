@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/", "destination": "/index.html" }
+  ]
+}
+```
+
+بعدين الرابط هيكون:
+```
+future-foods-store.vercel.app/admin
