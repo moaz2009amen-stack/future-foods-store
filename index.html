@@ -481,7 +481,8 @@ function scrollToTop(){window.scrollTo({top:0,behavior:'smooth'})}
 function toggleLang(){lang=lang==='ar'?'en':'ar';document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.getElementById('langBtn').textContent=lang==='ar'?'EN':'ع';updateUI();renderProducts();renderCart()}
 function updateUI(){
   const t=T[lang];
-  ['heroTag','heroSub','catTitle','productsTitle','cartLabel','tabCart','tabDetails','continueBtn','backBtn','nameLabel','phoneLabel','addressLabel','notesLabel','placeOrderBtn','subLabel','delivLabel','totalLabel','totalLabel2','emptyCartText','emptyText','trackTitle','trackPhoneLabel','trackBtn','navHome','navTrack','navCart'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t[id]||''});
+  ['heroTag','heroSub','catTitle','productsTitle','cartLabel','tabCart','tabDetails','continueBtn','backBtn','nameLabel','phoneLabel','addressLabel','notesLabel','subLabel','delivLabel','totalLabel','totalLabel2','emptyCartText','emptyText','trackTitle','trackPhoneLabel','trackBtn','navHome','navTrack','navCart'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t[id]||''});
+  document.getElementById('placeOrderBtn').textContent=t.placeOrder;
   document.getElementById('heroTitle').innerHTML=t.heroTitle;
   document.getElementById('searchInput').placeholder=t.search;
   document.querySelectorAll('.curr').forEach(el=>el.textContent=t.curr);
