@@ -86,6 +86,40 @@ export default async function handler(req, res) {
       return res.json(rows[0]);
     }
 
+    // DELETE /api/orders?id=...        — حذف طلب واحد
+    // DELETE /api/orders?before=YYYY-MM  — حذف كل طلبات قبل تاريخ
+    // DELETE /api/orders?all=true        — حذف الكل
+    if (req.method === 'DELETE') {
+      const { id, before, all } = req.query;
+
+      if (id) {
+        await sql`DELETE FROM order_items WHERE order_id = ${id}`;
+        await sql`DELETE FROM orders WHERE id = ${id}`;
+        return res.status(204).end();
+      }
+
+      if (before) {
+        // before = "2025-03" → delete orders created before 2025-04-01
+        const cutoff = new Date(before + '-01');
+        cutoff.setMonth(cutoff.getMonth() + 1);
+        const cutoffStr = cutoff.toISOString();
+        const toDelete = await sql`SELECT id FROM orders WHERE created_at < ${cutoffStr}`;
+        for (const o of toDelete) {
+          await sql`DELETE FROM order_items WHERE order_id = ${o.id}`;
+        }
+        const result = await sql`DELETE FROM orders WHERE created_at < ${cutoffStr}`;
+        return res.json({ deleted: toDelete.length });
+      }
+
+      if (all === 'true') {
+        await sql`DELETE FROM order_items`;
+        await sql`DELETE FROM orders`;
+        return res.json({ deleted: 'all' });
+      }
+
+      return res.status(400).json({ error: 'specify id, before, or all' });
+    }
+
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (e) {
     console.error(e);
