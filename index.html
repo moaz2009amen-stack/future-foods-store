@@ -259,6 +259,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(13,17,23,0.92);backdrop
   <button class="nav-item active" onclick="scrollToTop()"><span class="nav-icon">🏪</span><span id="navHome">الرئيسية</span></button>
   <button class="nav-item" onclick="openTrack()"><span class="nav-icon">📦</span><span id="navTrack">طلباتي</span></button>
   <button class="nav-item" onclick="openCart()"><span class="nav-icon">🛒</span><span id="navCart">السلة</span></button>
+  <button class="nav-item" id="installBtn" onclick="installApp()" style="display:none"><span class="nav-icon">📲</span><span>تحميل</span></button>
 </nav>
 <div class="toast" id="toast"></div>
 
@@ -490,6 +491,24 @@ function updateUI(){
   if(firstCat)firstCat.querySelector('span').textContent=t.allCat;
 }
 // ===== PWA =====
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  document.getElementById('installBtn').style.display='flex';
+});
+window.addEventListener('appinstalled',()=>{
+  document.getElementById('installBtn').style.display='none';
+  deferredPrompt=null;
+});
+function installApp(){
+  if(!deferredPrompt){
+    showToast('افتح المتصفح واضغط "إضافة إلى الشاشة الرئيسية"');
+    return;
+  }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{deferredPrompt=null;document.getElementById('installBtn').style.display='none'});
+}
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
     navigator.serviceWorker.register('/sw.js').catch(()=>{});
