@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "routes": [
     { "src": "/admin", "dest": "/admin.html" },
     { "src": "/delivery", "dest": "/delivery.html" },
