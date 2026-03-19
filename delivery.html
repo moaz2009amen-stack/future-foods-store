@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Future Foods — التوصيل</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root { --ff:'Cairo',sans-serif; --r:14px; --tr:0.2s cubic-bezier(.4,0,.2,1); }
+
+[data-theme="dark"] {
+  --bg:#0a0a0f; --surface:#111118; --surface2:#18181f; --surface3:#1f1f28;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --text:#f0f0f8; --text2:#8888aa; --text3:#44445a;
+  --green:#22c55e; --green-bg:rgba(34,197,94,0.1);
+  --blue:#3b82f6;  --blue-bg:rgba(59,130,246,0.1);
+  --gold:#f0b429;  --gold-bg:rgba(240,180,41,0.1);
+  --red:#ef4444;   --red-bg:rgba(239,68,68,0.1);
+  --shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+
+[data-theme="light"] {
+  --bg:#f0f0f5; --surface:#ffffff; --surface2:#f5f5fa; --surface3:#eeeef5;
+  --border:rgba(0,0,0,0.06); --border2:rgba(0,0,0,0.1);
+  --text:#0a0a14; --text2:#606080; --text3:#b0b0c8;
+  --green:#16a34a; --green-bg:rgba(22,163,74,0.08);
+  --blue:#2563eb;  --blue-bg:rgba(37,99,235,0.08);
+  --gold:#b45309;  --gold-bg:rgba(180,83,9,0.08);
+  --red:#dc2626;   --red-bg:rgba(220,38,38,0.08);
+  --shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--ff);background:var(--bg);color:var(--text);min-height:100dvh;max-width:480px;margin:0 auto;overflow-x:hidden;transition:background var(--tr),color var(--tr)}
+
+/* ── Login ── */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:32px}
+.login-icon{width:80px;height:80px;background:var(--green);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:24px;box-shadow:0 10px 30px rgba(34,197,94,.3)}
+.login-title{font-size:24px;font-weight:900;margin-bottom:6px}
+.login-sub{font-size:14px;color:var(--text2);margin-bottom:32px}
+.login-input{width:100%;padding:13px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--ff);font-size:14px;text-align:right;outline:none;margin-bottom:12px;transition:border-color var(--tr)}
+.login-input:focus{border-color:var(--green)}
+.login-btn{width:100%;padding:14px;background:var(--green);border:none;border-radius:var(--r);color:white;font-family:var(--ff);font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(34,197,94,.3)}
+.login-err{color:var(--red);font-size:13px;margin-top:10px;text-align:center}
+
+/* ── Header ── */
+.header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.worker-info{display:flex;align-items:center;gap:10px}
+.worker-avatar{width:38px;height:38px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:white}
+.worker-name{font-size:14px;font-weight:800}
+.worker-role{font-size:11px;color:var(--text2);margin-top:1px}
+.online-pill{display:flex;align-items:center;gap:5px;background:var(--green-bg);border:1px solid rgba(34,197,94,.2);padding:6px 12px;border-radius:50px;font-size:12px;color:var(--green);font-weight:700}
+.online-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Stats ── */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 14px 0}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center}
+.stat-val{font-size:24px;font-weight:900;margin-bottom:3px}
+.stat-lbl{font-size:10px;color:var(--text2)}
+
+/* ── Section ── */
+.section-hdr{padding:16px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.section-title{font-size:15px;font-weight:800}
+
+/* ── Order Cards ── */
+.orders-list{padding:0 14px;padding-bottom:100px}
+
+.order-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:10px;transition:all var(--tr)}
+.order-card.delivered{opacity:.5}
+
+.order-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.order-inv{font-size:13px;font-weight:800;color:var(--gold)}
+.order-time{font-size:11px;color:var(--text2)}
+
+.order-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;margin-bottom:12px}
+.s-pending  {background:var(--gold-bg);color:var(--gold)}
+.s-on_way   {background:var(--blue-bg);color:var(--blue)}
+.s-delivered{background:var(--green-bg);color:var(--green)}
+
+.customer-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.customer-avatar{width:36px;height:36px;background:var(--surface2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.customer-name{font-size:13px;font-weight:800}
+.customer-addr{font-size:12px;color:var(--text2);margin-top:2px;line-height:1.4}
+
+.amount-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.amount-val{font-size:18px;font-weight:900}
+.amount-lbl{font-size:12px;color:var(--text2);font-weight:400}
+.pay-type{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700}
+.pay-cash{background:var(--gold-bg);color:var(--gold)}
+.pay-online{background:var(--blue-bg);color:var(--blue)}
+
+.action-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.action-btn{padding:11px 6px;border-radius:12px;font-family:var(--ff);font-size:12px;font-weight:800;border:none;cursor:pointer;text-align:center;transition:all var(--tr)}
+.action-btn:active{transform:scale(.95)}
+.btn-call    {background:var(--blue-bg);color:var(--blue)}
+.btn-onway   {background:var(--gold-bg);color:var(--gold)}
+.btn-done    {background:var(--green-bg);color:var(--green)}
+.btn-problem {background:var(--red-bg);color:var(--red)}
+
+.action-btn-full{width:100%;padding:13px;background:var(--green-bg);border:1.5px solid rgba(34,197,94,.25);border-radius:12px;font-family:var(--ff);font-size:14px;font-weight:800;color:var(--green);cursor:pointer;text-align:center;transition:all var(--tr)}
+.action-btn-full:active{transform:scale(.98)}
+
+/* ── Items Preview ── */
+.items-preview{font-size:12px;color:var(--text2);padding:10px 0 14px;border-top:1px solid var(--border);margin-top:4px;line-height:1.6}
+
+/* ── Empty State ── */
+.empty-state{text-align:center;padding:60px 24px}
+.empty-icon{font-size:56px;margin-bottom:16px}
+.empty-title{font-size:16px;font-weight:700;margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--text2)}
+
+/* ── Bottom Nav ── */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--surface);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 8px 8px;cursor:pointer}
+.nav-icon{font-size:21px}
+.nav-lbl{font-size:10px;font-weight:700;color:var(--text3)}
+.nav-item.active .nav-lbl{color:var(--green)}
+
+/* ── History Page ── */
+#page-history{display:none;padding-bottom:80px}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface);border:1px solid var(--border2);padding:11px 22px;border-radius:50px;font-size:13px;font-weight:700;z-index:9000;opacity:0;transition:all .3s;white-space:nowrap;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Icon button ── */
+.icon-btn{width:36px;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-icon">🛵</div>
+  <div class="login-title">Future Foods</div>
+  <div class="login-sub">بوابة عامل التوصيل</div>
+  <input type="tel" class="login-input" id="login-phone" placeholder="رقم هاتفك" oninput="checkLogin()">
+  <input type="password" class="login-input" id="login-pass" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="login-btn" onclick="doLogin()">دخول</button>
+  <div class="login-err" id="login-err"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ════ ACTIVE ORDERS PAGE ════ -->
+<div id="page-home" style="display:none">
+  <header class="header">
+    <div class="worker-info">
+      <div class="worker-avatar" id="w-avatar">م</div>
+      <div>
+        <div class="worker-name" id="w-name">...</div>
+        <div class="worker-role">عامل توصيل</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="icon-btn" onclick="toggleTheme()">🌙</div>
+      <div class="online-pill"><div class="online-dot"></div> متاح</div>
+    </div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-val" id="st-pending" style="color:var(--gold)">0</div>
+      <div class="stat-lbl">في الانتظار</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="st-delivered" style="color:var(--green)">0</div>
+      <div class="stat-lbl">تم التوصيل</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="st-collected" style="color:var(--gold)">0</div>
+      <div class="stat-lbl">ج.م حصّلت</div>
+    </div>
+  </div>
+
+  <div class="section-hdr">
+    <span class="section-title">🛵 طلباتي دلوقتي</span>
+    <span id="active-count" style="font-size:12px;color:var(--text2)"></span>
+  </div>
+
+  <div class="orders-list" id="active-orders-list">
+    <div class="empty-state">
+      <div class="empty-icon">✅</div>
+      <div class="empty-title">مفيش طلبات دلوقتي</div>
+      <div class="empty-sub">هيظهر هنا أي طلب بيتحول ليك</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ HISTORY PAGE ════ -->
+<div id="page-history">
+  <header class="header">
+    <div class="worker-info">
+      <div class="worker-avatar" style="background:var(--blue)">📋</div>
+      <div>
+        <div class="worker-name">السجل</div>
+        <div class="worker-role">طلبات تم توصيلها</div>
+      </div>
+    </div>
+    <div class="icon-btn" onclick="toggleTheme()">🌙</div>
+  </header>
+  <div class="orders-list" id="history-list" style="padding-top:12px"></div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <div class="nav-item active" id="nav-home" onclick="showPage('home')">
+    <span class="nav-icon">🛵</span>
+    <span class="nav-lbl">طلباتي</span>
+  </div>
+  <div class="nav-item" id="nav-history" onclick="showPage('history')">
+    <span class="nav-icon">📋</span>
+    <span class="nav-lbl">السجل</span>
+  </div>
+</nav>
+
+<script>
+const SB_URL = 'https://qnyxhjsjswctwtnjvxdv.supabase.co';
+const SB_KEY = 'sb_publishable_UUt4h0ylAVg1h-fhHLYjwQ_m_uskUI9';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+let worker = null;
+let myOrders = [];
+
+/* ── Theme ── */
+const savedTheme = localStorage.getItem('ff_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+
+function toggleTheme() {
+  const curr = document.documentElement.getAttribute('data-theme');
+  const next = curr === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ff_theme', next);
+}
+
+/* ── Auth ── */
+async function doLogin() {
+  const phone = document.getElementById('login-phone').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  if (!phone || !pass) { document.getElementById('login-err').textContent = 'ادخل الهاتف وكلمة المرور'; return; }
+
+  const { data } = await sb.from('delivery_workers').select('*').eq('phone', phone).eq('password', pass).single();
+  if (data) {
+    worker = data;
+    localStorage.setItem('ff_delivery_worker', JSON.stringify(data));
+    startApp();
+  } else {
+    document.getElementById('login-err').textContent = 'رقم هاتف أو كلمة مرور خاطئة';
+  }
+}
+
+function checkLogin() {} // placeholder for input event
+
+// Auto-login
+const saved = localStorage.getItem('ff_delivery_worker');
+if (saved) {
+  worker = JSON.parse(saved);
+  setTimeout(startApp, 50);
+}
+
+function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('page-home').style.display = 'block';
+  document.getElementById('w-name').textContent = worker.name;
+  document.getElementById('w-avatar').textContent = worker.name.charAt(0);
+  loadMyOrders();
+  // Subscribe to realtime
+  sb.channel('delivery-orders')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `delivery_worker_id=eq.${worker.id}` }, () => loadMyOrders())
+    .subscribe();
+  setInterval(loadMyOrders, 30000);
+}
+
+async function loadMyOrders() {
+  const { data } = await sb.from('orders').select('*')
+    .eq('delivery_worker_id', worker.id)
+    .in('order_status', ['on_way', 'pending', 'confirmed', 'preparing', 'delivered'])
+    .order('created_at', { ascending: false })
+    .limit(50);
+  myOrders = data || [];
+  renderMyOrders();
+  updateStats();
+}
+
+function updateStats() {
+  const today = new Date().toDateString();
+  const todayOrders = myOrders.filter(o => new Date(o.created_at).toDateString() === today);
+  const active    = myOrders.filter(o => o.order_status === 'on_way').length;
+  const delivered = todayOrders.filter(o => o.order_status === 'delivered').length;
+  const collected = todayOrders.filter(o => o.order_status === 'delivered' && o.payment_method === 'cash').reduce((s, o) => s + (o.total_amount || 0), 0);
+  document.getElementById('st-pending').textContent   = active;
+  document.getElementById('st-delivered').textContent = delivered;
+  document.getElementById('st-collected').textContent = collected.toFixed(0);
+}
+
+const STATUS_LABELS = {
+  pending:   ['⏳', 'في الانتظار',  's-pending'],
+  on_way:    ['🛵', 'في الطريق',    's-on_way'],
+  delivered: ['✅', 'تم التوصيل',   's-delivered'],
+};
+
+function renderMyOrders() {
+  const active = myOrders.filter(o => o.order_status === 'on_way' || o.order_status === 'pending');
+  document.getElementById('active-count').textContent = active.length ? active.length + ' طلب' : '';
+
+  const list = document.getElementById('active-orders-list');
+  if (!active.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">مفيش طلبات دلوقتي</div><div class="empty-sub">هيظهر هنا أي طلب بيتحول ليك</div></div>`;
+    return;
+  }
+  list.innerHTML = active.map(o => orderCard(o, true)).join('');
+}
+
+function orderCard(o, isActive) {
+  const [icon, label, cls] = STATUS_LABELS[o.order_status] || ['❓', o.order_status, 's-pending'];
+  const time = new Date(o.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  const items = (o.items || []).slice(0, 3).map(i => `${i.product_name} × ${i.quantity}`).join(' · ');
+
+  const actions = isActive ? (o.order_status === 'on_way' ? `
+    <div class="action-btns">
+      <button class="action-btn btn-call" onclick="callCustomer('${o.customer_phone}')">📞 اتصال</button>
+      <button class="action-btn btn-problem" onclick="reportProblem('${o.id}')">⚠️ مشكلة</button>
+      <button class="action-btn btn-done" onclick="markDelivered('${o.id}')">✅ تم</button>
+    </div>` : `
+    <button class="action-btn-full" onclick="startDelivery('${o.id}')">🛵 بدء التوصيل</button>`)
+    : '';
+
+  return `
+  <div class="order-card ${o.order_status === 'delivered' ? 'delivered' : ''}">
+    <div class="order-top">
+      <div class="order-inv">${o.invoice_number || o.id.slice(0,8).toUpperCase()}</div>
+      <div class="order-time">${time}</div>
+    </div>
+    <div class="order-status-badge ${cls}">${icon} ${label}</div>
+    <div class="customer-row">
+      <div class="customer-avatar">👤</div>
+      <div>
+        <div class="customer-name">${o.customer_name || '-'}</div>
+        <div class="customer-addr">📍 ${o.customer_address || '-'}</div>
+      </div>
+    </div>
+    <div class="amount-row">
+      <div>
+        <div class="amount-val">${(o.total_amount || 0).toFixed(2)} <span class="amount-lbl">ج.م</span></div>
+      </div>
+      <div class="pay-type ${o.payment_method === 'cash' ? 'pay-cash' : 'pay-online'}">
+        ${o.payment_method === 'cash' ? '💵 كاش' : '📱 إلكتروني'}
+      </div>
+    </div>
+    ${items ? `<div class="items-preview">🛒 ${items}${(o.items || []).length > 3 ? ' وأكتر...' : ''}</div>` : ''}
+    ${actions}
+  </div>`;
+}
+
+async function startDelivery(id) {
+  await sb.from('orders').update({ order_status: 'on_way' }).eq('id', id);
+  showToast('🛵 تم بدء التوصيل');
+  await loadMyOrders();
+}
+
+async function markDelivered(id) {
+  if (!confirm('هل تم التسليم للعميل؟')) return;
+  await sb.from('orders').update({ order_status: 'delivered', delivered_at: new Date().toISOString() }).eq('id', id);
+  showToast('✅ تم تسجيل التوصيل بنجاح');
+  await loadMyOrders();
+}
+
+function callCustomer(phone) {
+  window.location.href = `tel:${phone}`;
+}
+
+async function reportProblem(id) {
+  const note = prompt('اكتب المشكلة:');
+  if (!note) return;
+  await sb.from('orders').update({ notes: (note || '') + ' [مشكلة توصيل: ' + note + ']' }).eq('id', id);
+  showToast('⚠️ تم إرسال التقرير');
+}
+
+/* ── History ── */
+async function loadHistory() {
+  const { data } = await sb.from('orders').select('*')
+    .eq('delivery_worker_id', worker.id)
+    .eq('order_status', 'delivered')
+    .order('created_at', { ascending: false })
+    .limit(30);
+  const list = document.getElementById('history-list');
+  if (!data?.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">مفيش سجل بعد</div><div class="empty-sub">هيظهر هنا الطلبات اللي وصّلتها</div></div>`;
+    return;
+  }
+  list.innerHTML = data.map(o => orderCard(o, false)).join('');
+}
+
+/* ── Navigation ── */
+function showPage(page) {
+  document.getElementById('page-home').style.display    = page === 'home'    ? 'block' : 'none';
+  document.getElementById('page-history').style.display = page === 'history' ? 'block' : 'none';
+  document.getElementById('nav-home').classList.toggle('active',    page === 'home');
+  document.getElementById('nav-history').classList.toggle('active', page === 'history');
+  if (page === 'history') loadHistory();
+}
+
+/* ── Toast ── */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
