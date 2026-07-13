@@ -2,6 +2,7 @@ export type ProductStatus = "available" | "unavailable";
 export type OrderStatus = "new" | "preparing" | "ready" | "delivered" | "cancelled";
 export type UserRole = "owner" | "worker";
 export type ThemeName = "red" | "black";
+export type PaymentMethod = "cash" | "instapay" | "wallet";
 
 export interface Category {
   id: string;
@@ -40,6 +41,8 @@ export interface Order {
   delivery_fee: number;
   total: number;
   acknowledged: boolean;
+  payment_method: PaymentMethod;
+  payment_proof_url: string | null;
   created_at: string;
 }
 

@@ -34,7 +34,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   const settings = await getStoreSettings();
 
   return (
-    <div data-theme="red" className="min-h-screen flex">
+    <div data-theme="red" className="min-h-screen flex flex-col sm:flex-row">
       <AdminSidebar role={appUser.role} username={appUser.username} storeName={settings.store_name} />
       <main className="flex-1 p-4 sm:p-6 max-w-full overflow-x-hidden">{children}</main>
       {/* مسؤول عن تكرار صوت التنبيه لحد ما يتم تأكيد استلام الطلب */}
