@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* خلفية دافئة بدرجة كستنائي غامق بدل الأسود الكئيب، مع لمسة حيوية */
+  --bg: #170f10;
+  --surface: #221618;
+  --surface-2: #2c1c1f;
+  --border: #3a2226;
+  --text: #fbf5f3;
+  --text-muted: #c9a8a8;
+  --accent: #ef2b35;
+  --accent-hover: #d41e28;
+  --accent-2: #ffb020;
+  --accent-contrast: #ffffff;
+  --success: #2fd66b;
+  --warning: #ffb020;
+  --danger: #ff4d4f;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Cairo", "Segoe UI", sans-serif;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.1rem;
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: var(--accent-contrast);
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+.btn-accent:hover {
+  filter: brightness(1.1);
+}
+.btn-accent:active {
+  transform: scale(0.97);
+}
+
+.hero-gradient {
+  background: radial-gradient(circle at 15% 20%, rgba(239, 43, 53, 0.35), transparent 55%),
+    radial-gradient(circle at 85% 80%, rgba(255, 176, 32, 0.25), transparent 55%),
+    var(--surface);
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(239, 43, 53, 0.5); }
+  70% { box-shadow: 0 0 0 12px rgba(239, 43, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 43, 53, 0); }
+}
+.new-order-pulse {
+  animation: pulse-ring 1.5s infinite;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

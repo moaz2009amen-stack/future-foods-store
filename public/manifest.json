@@ -1,0 +1,27 @@
+{
+  "name": "سر السعادة ستور - Future Foods Store",
+  "short_name": "سر السعادة",
+  "description": "اطلب احتياجاتك اليومية أونلاين من سر السعادة ستور",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#170f10",
+  "theme_color": "#ef2b35",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
