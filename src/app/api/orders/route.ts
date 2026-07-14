@@ -3,11 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { name, phone, address, notes, items, deliveryFee } = body;
+  const { name, phone, address, notes, items, deliveryFee, paymentMethod, paymentProofUrl } = body;
 
   if (!name || !phone || !address || !items?.length) {
     return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
   }
+
+  const validPaymentMethods = ["cash", "instapay", "wallet"];
+  const finalPaymentMethod = validPaymentMethods.includes(paymentMethod) ? paymentMethod : "cash";
 
   const supabase = await createClient();
 
@@ -77,6 +80,8 @@ export async function POST(req: Request) {
       notes: notes || null,
       delivery_fee: deliveryFee || 0,
       total,
+      payment_method: finalPaymentMethod,
+      payment_proof_url: finalPaymentMethod === "cash" ? null : (paymentProofUrl || null),
     })
     .select("*")
     .single();

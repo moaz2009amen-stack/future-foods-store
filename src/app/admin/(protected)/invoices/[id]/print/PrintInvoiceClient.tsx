@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Invoice, Order, OrderItem, StoreSettings } from "@/types";
+import { PAYMENT_METHOD_LABELS, type Invoice, type Order, type OrderItem, type StoreSettings } from "@/types";
 
 export default function PrintInvoiceClient({
   invoice,
@@ -63,6 +63,7 @@ export default function PrintInvoiceClient({
           <div className={mode === "a4" ? "mb-6 text-sm" : "mb-2"}>
             <p>العميل: {order.customer_name}</p>
             <p>الهاتف: {order.customer_phone}</p>
+            <p>طريقة الدفع: {PAYMENT_METHOD_LABELS[order.payment_method]}</p>
           </div>
         )}
 
@@ -87,12 +88,18 @@ export default function PrintInvoiceClient({
           </tbody>
         </table>
 
+        <div className="flex justify-between text-sm mb-1">
+          <span>إجمالي المنتجات</span>
+          <span>{items.reduce((s, it) => s + it.line_total, 0)} ج.م</span>
+        </div>
+        <div className="flex justify-between text-sm mb-2">
+          <span>تكلفة التوصيل</span>
+          <span>{order?.delivery_fee ?? 0} ج.م</span>
+        </div>
         <div className="flex justify-between font-bold border-t border-gray-400 pt-2">
           <span>الإجمالي</span>
           <span>{invoice.total_sale} ج.م</span>
         </div>
-
-      
 
         <p className={mode === "a4" ? "text-center text-gray-400 text-xs mt-10" : "text-center text-gray-400 mt-3"}>
           شكراً لتعاملكم معنا

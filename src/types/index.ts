@@ -95,3 +95,9 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   delivered: "تم التسليم",
   cancelled: "ملغي",
 };
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: "كاش عند الاستلام",
+  instapay: "إنستاباي",
+  wallet: "محفظة إلكترونية",
+};
