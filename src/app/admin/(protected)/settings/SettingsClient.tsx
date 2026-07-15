@@ -46,7 +46,7 @@ export default function SettingsClient({
         delivery_fee: parseFloat(deliveryFeeInput) || 0,
         min_order: parseFloat(minOrderInput) || 0,
         working_hours: settings.working_hours,
-        theme: settings.theme,
+        theme: "white",
       })
       .eq("id", 1);
     setSaving(false);

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "سر السعادة ستور",
   },
   icons: {
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ef2b35",
+  themeColor: "#16a34a",
 };
 
 export default async function RootLayout({
@@ -34,7 +34,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" data-theme="red">
+    <html lang="ar" dir="rtl">
       <body className={`${cairo.variable} font-cairo antialiased`}>
         {children}
         <PWARegister />

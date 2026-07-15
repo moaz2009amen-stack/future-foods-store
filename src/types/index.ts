@@ -1,7 +1,7 @@
 export type ProductStatus = "available" | "unavailable";
 export type OrderStatus = "new" | "preparing" | "ready" | "delivered" | "cancelled";
 export type UserRole = "owner" | "worker";
-export type ThemeName = "red" | "black";
+export type ThemeName = "red" | "white";
 export type PaymentMethod = "cash" | "instapay" | "wallet";
 
 export interface Category {

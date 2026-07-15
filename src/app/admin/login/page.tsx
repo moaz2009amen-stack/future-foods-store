@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg" data-theme="red">
+    <div className="min-h-screen flex items-center justify-center bg-bg">
       <form onSubmit={handleSubmit} className="card p-8 w-full max-w-sm flex flex-col gap-4">
         <h1 className="text-xl font-bold text-center mb-2">لوحة تحكم سر السعادة ستور</h1>
         <input

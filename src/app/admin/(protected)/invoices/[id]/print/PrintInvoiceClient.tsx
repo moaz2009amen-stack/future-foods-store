@@ -17,7 +17,7 @@ export default function PrintInvoiceClient({
   const [mode, setMode] = useState<"a4" | "thermal">("a4");
 
   return (
-    <div className="min-h-screen bg-white text-black" data-theme="red">
+    <div className="min-h-screen bg-white text-black" >
       <div className="print:hidden bg-bg text-text p-4 flex gap-3 justify-center">
         <button
           onClick={() => setMode("a4")}
