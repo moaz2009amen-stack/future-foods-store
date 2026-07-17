@@ -46,6 +46,12 @@ export default function SettingsClient({
         delivery_fee: parseFloat(deliveryFeeInput) || 0,
         min_order: parseFloat(minOrderInput) || 0,
         working_hours: settings.working_hours,
+        facebook_url: settings.facebook_url || null,
+        instagram_url: settings.instagram_url || null,
+        tiktok_url: settings.tiktok_url || null,
+        website_url: settings.website_url || null,
+        announcement: settings.announcement || null,
+        announcement_enabled: settings.announcement_enabled,
         theme: "white",
       })
       .eq("id", 1);
@@ -177,6 +183,71 @@ export default function SettingsClient({
             value={settings.working_hours ?? ""}
             onChange={(e) => setSettings({ ...settings, working_hours: e.target.value })}
           />
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <label className="flex items-center gap-2 text-sm font-bold mb-2">
+            <input
+              type="checkbox"
+              checked={settings.announcement_enabled}
+              onChange={(e) => setSettings({ ...settings, announcement_enabled: e.target.checked })}
+              className="w-4 h-4 accent-[var(--accent)]"
+            />
+            تفعيل شريط إعلان فوق البانر
+          </label>
+          <textarea
+            rows={2}
+            placeholder="مثال: عروض العيد جارية الآن — خصومات تصل لـ 30%"
+            className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm"
+            value={settings.announcement ?? ""}
+            onChange={(e) => setSettings({ ...settings, announcement: e.target.value })}
+          />
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <h2 className="font-bold mb-3">روابط التواصل الاجتماعي (اختياري)</h2>
+          <div className="flex flex-col gap-3">
+            <div>
+              <label className="text-xs text-muted block mb-1">رابط فيسبوك</label>
+              <input
+                dir="ltr"
+                placeholder="https://facebook.com/..."
+                className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm text-left"
+                value={settings.facebook_url ?? ""}
+                onChange={(e) => setSettings({ ...settings, facebook_url: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted block mb-1">رابط إنستجرام</label>
+              <input
+                dir="ltr"
+                placeholder="https://instagram.com/..."
+                className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm text-left"
+                value={settings.instagram_url ?? ""}
+                onChange={(e) => setSettings({ ...settings, instagram_url: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted block mb-1">رابط تيك توك</label>
+              <input
+                dir="ltr"
+                placeholder="https://tiktok.com/@..."
+                className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm text-left"
+                value={settings.tiktok_url ?? ""}
+                onChange={(e) => setSettings({ ...settings, tiktok_url: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted block mb-1">رابط الموقع الإلكتروني</label>
+              <input
+                dir="ltr"
+                placeholder="https://..."
+                className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm text-left"
+                value={settings.website_url ?? ""}
+                onChange={(e) => setSettings({ ...settings, website_url: e.target.value })}
+              />
+            </div>
+          </div>
         </div>
 
         <button disabled={saving} className="btn-accent rounded-lg py-2.5 font-bold disabled:opacity-50">

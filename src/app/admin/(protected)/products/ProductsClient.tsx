@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, X, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import Skeleton from "@/components/admin/Skeleton";
-import type { Product, Category } from "@/types";
+import type { Product, Category, HomeSection } from "@/types";
 
 const emptyForm = {
   id: "",
@@ -13,8 +13,10 @@ const emptyForm = {
   description: "",
   image_url: "" as string | null,
   category_id: "",
+  home_section_id: "",
   purchase_price: "0",
   sale_price: "0",
+  discount_price: "",
   status: "available" as "available" | "unavailable",
 };
 
@@ -27,9 +29,11 @@ function isValidDecimal(value: string) {
 export default function ProductsClient({
   initialProducts,
   categories,
+  homeSections,
 }: {
   initialProducts: Product[];
   categories: Category[];
+  homeSections: HomeSection[];
 }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [showForm, setShowForm] = useState(false);
@@ -39,6 +43,8 @@ export default function ProductsClient({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "available" | "unavailable">("all");
+
+  const productSections = homeSections.filter((s) => s.section_type === "products");
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -61,8 +67,10 @@ export default function ProductsClient({
       description: p.description ?? "",
       image_url: p.image_url,
       category_id: p.category_id ?? "",
+      home_section_id: p.home_section_id ?? "",
       purchase_price: String(p.purchase_price),
       sale_price: String(p.sale_price),
+      discount_price: p.discount_price != null ? String(p.discount_price) : "",
       status: p.status,
     });
     setShowForm(true);
@@ -86,8 +94,10 @@ export default function ProductsClient({
       description: form.description || null,
       image_url: form.image_url || null,
       category_id: form.category_id || null,
+      home_section_id: form.home_section_id || null,
       purchase_price: parseFloat(form.purchase_price) || 0,
       sale_price: parseFloat(form.sale_price) || 0,
+      discount_price: form.discount_price ? parseFloat(form.discount_price) : null,
       status: form.status,
     };
 
@@ -183,7 +193,17 @@ export default function ProductsClient({
             <div className="flex justify-between items-start">
               <div>
                 <div className="font-bold text-sm">{p.name}</div>
-                <div className="text-xs text-muted">شراء {p.purchase_price} / بيع {p.sale_price}</div>
+                <div className="text-xs text-muted">
+                  شراء {p.purchase_price} / بيع {p.sale_price}
+                  {p.discount_price != null && (
+                    <span className="text-accent font-bold"> / خصم {p.discount_price}</span>
+                  )}
+                </div>
+                {p.home_section_id && (
+                  <div className="text-[11px] text-accent mt-0.5">
+                    {productSections.find((s) => s.id === p.home_section_id)?.title ?? ""}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => toggleStatus(p)}
@@ -253,6 +273,23 @@ export default function ProductsClient({
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="text-xs text-muted block mb-1">
+                يظهر في كارت الصفحة الرئيسية (اختياري)
+              </label>
+              <select
+                className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm"
+                value={form.home_section_id}
+                onChange={(e) => setForm({ ...form, home_section_id: e.target.value })}
+              >
+                <option value="">بدون — يظهر في القسم بس</option>
+                {productSections.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted block mb-1">سعر الشراء (ج.م)</label>
@@ -285,6 +322,22 @@ export default function ProductsClient({
                 />
               </div>
             </div>
+
+            <div>
+              <label className="text-xs text-muted block mb-1">سعر بعد الخصم (اختياري — سيبه فاضي لو مفيش عرض)</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="مثال: 45"
+                className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm text-left"
+                value={form.discount_price}
+                onChange={(e) => {
+                  if (isValidDecimal(e.target.value)) setForm({ ...form, discount_price: e.target.value });
+                }}
+              />
+            </div>
+
             <div>
               <label className="text-xs text-muted block mb-1">حالة التوفر</label>
               <select

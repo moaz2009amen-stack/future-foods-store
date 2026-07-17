@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreSettings } from "@/lib/settings";
 import StoreHeader from "@/components/store/StoreHeader";
 import StoreFooter from "@/components/store/StoreFooter";
-import ProductCard from "@/components/store/ProductCard";
-import type { Category, Product } from "@/types";
+import AnnouncementBar from "@/components/store/AnnouncementBar";
+import HomeSectionCard from "@/components/store/HomeSectionCard";
+import type { HomeSection } from "@/types";
 
 export const revalidate = 0;
 
@@ -13,15 +14,19 @@ export default async function HomePage() {
   const supabase = await createClient();
   const settings = await getStoreSettings();
 
-  const [{ data: categories }, { data: featured }, { data: latest }] = await Promise.all([
-    supabase.from("categories").select("*").order("sort_order"),
-    supabase.from("products").select("id,name,description,image_url,category_id,sale_price,status,is_featured").eq("is_featured", true).eq("status", "available").limit(8),
-    supabase.from("products").select("id,name,description,image_url,category_id,sale_price,status,is_featured").order("created_at", { ascending: false }).limit(8),
-  ]);
+  const { data: sections } = await supabase
+    .from("home_sections")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order");
 
   return (
     <div>
       <StoreHeader settings={settings} />
+
+      {settings.announcement_enabled && settings.announcement && (
+        <AnnouncementBar text={settings.announcement} />
+      )}
 
       {/* البانر الرئيسي */}
       <section className="max-w-7xl mx-auto px-4 pt-6">
@@ -31,7 +36,7 @@ export default async function HomePage() {
               تجربة تسوق <span className="bg-gradient-to-l from-accent to-accent-2 bg-clip-text text-transparent">أسهل وأسرع</span>
             </h1>
             <p className="text-muted mb-6">منتجات مختارة بعناية من أجلك، توصيل سريع وجودة مضمونة</p>
-            <Link href="#categories" className="btn-accent inline-block rounded-full px-6 py-3 font-bold">
+            <Link href="#departments" className="btn-accent inline-block rounded-full px-6 py-3 font-bold">
               تسوق الآن
             </Link>
           </div>
@@ -44,7 +49,7 @@ export default async function HomePage() {
         {/* مميزات الماركت */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
           {[
-            { icon: Truck, title: "توصيل سريع", desc: "خلال دقائق", color: "text-accent" },
+            { icon: Truck, title: "توصيل سريع", desc: "خلال ساعات", color: "text-accent" },
             { icon: ShieldCheck, title: "دفع آمن", desc: "طرق دفع متعددة", color: "text-accent-2" },
             { icon: Award, title: "جودة مضمونة", desc: "منتجات أصلية", color: "text-accent" },
             { icon: BadgePercent, title: "عروض حصرية", desc: "خصومات يومية", color: "text-accent-2" },
@@ -60,48 +65,12 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* الأقسام */}
-      <section id="categories" className="max-w-7xl mx-auto px-4 mt-10">
-        <h2 className="text-lg font-bold mb-4">تسوق حسب الأقسام</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-4">
-          {(categories as Category[] | null)?.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/category/${cat.id}`}
-              className="flex flex-col items-center gap-2 group"
-            >
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-surface border border-border overflow-hidden flex items-center justify-center group-hover:border-accent transition-colors">
-                {cat.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted">{cat.name.charAt(0)}</span>
-                )}
-              </div>
-              <span className="text-xs text-center">{cat.name}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* المنتجات المميزة */}
-      {featured && featured.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 mt-10">
-          <h2 className="text-lg font-bold mb-4">المنتجات المميزة</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {(featured as Product[]).map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* أحدث المنتجات */}
-      <section className="max-w-7xl mx-auto px-4 mt-10 mb-16">
-        <h2 className="text-lg font-bold mb-4">أحدث المنتجات</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {(latest as Product[] | null)?.map((p) => (
-            <ProductCard key={p.id} product={p} />
+      {/* كروت أقسام الماركت الكبيرة - كل كارت زي "قسم" في الماركت الحقيقي */}
+      <section id="departments" className="max-w-7xl mx-auto px-4 mt-10 mb-16">
+        <h2 className="text-lg font-bold mb-4">اتفسح في الماركت</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {(sections as HomeSection[] | null)?.map((section) => (
+            <HomeSectionCard key={section.id} section={section} />
           ))}
         </div>
       </section>

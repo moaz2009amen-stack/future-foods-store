@@ -8,15 +8,15 @@ export default function GlobalError({
 }) {
   return (
     <html lang="ar" dir="rtl">
-      <body style={{ background: "#f6faf7", color: "#14261b", fontFamily: "sans-serif" }}>
+      <body style={{ background: "#fdf8f8", color: "#241414", fontFamily: "sans-serif" }}>
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ textAlign: "center", maxWidth: 380 }}>
             <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>حصل خطأ في تحميل الموقع</h1>
-            <p style={{ color: "#5e7a68", marginBottom: 24 }}>حاول تحديث الصفحة تاني.</p>
+            <p style={{ color: "#8a6b6b", marginBottom: 24 }}>حاول تحديث الصفحة تاني.</p>
             <button
               onClick={reset}
               style={{
-                background: "#16a34a",
+                background: "#ef4444",
                 color: "#fff",
                 borderRadius: 999,
                 padding: "12px 32px",

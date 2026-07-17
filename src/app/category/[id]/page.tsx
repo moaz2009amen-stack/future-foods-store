@@ -16,12 +16,13 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
     supabase.from("categories").select("*").eq("id", id).single(),
     supabase
       .from("products")
-      .select("id,name,description,image_url,category_id,sale_price,status,is_featured")
+      .select("id,name,description,image_url,category_id,home_section_id,sale_price,discount_price,status,is_featured")
       .eq("category_id", id),
   ]);
 
   return (
-    <div>
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1">
       <StoreHeader settings={settings} />
       <section className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-xl font-bold mb-6">{category?.name ?? "القسم"}</h1>
@@ -35,6 +36,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
           <p className="text-muted text-center py-16">لا توجد منتجات في هذا القسم حالياً</p>
         )}
       </section>
+      </div>
       <StoreFooter settings={settings} />
     </div>
   );

@@ -3,6 +3,7 @@ export type OrderStatus = "new" | "preparing" | "ready" | "delivered" | "cancell
 export type UserRole = "owner" | "worker";
 export type ThemeName = "red" | "white";
 export type PaymentMethod = "cash" | "instapay" | "wallet";
+export type HomeSectionType = "categories" | "products";
 
 export interface Category {
   id: string;
@@ -11,14 +12,26 @@ export interface Category {
   sort_order: number;
 }
 
+export interface HomeSection {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  section_type: HomeSectionType;
+  sort_order: number;
+  is_active: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
   description: string | null;
   image_url: string | null;
   category_id: string | null;
+  home_section_id: string | null;
   purchase_price: number;
   sale_price: number;
+  discount_price: number | null;
   status: ProductStatus;
   is_featured: boolean;
 }
@@ -79,6 +92,12 @@ export interface StoreSettings {
   working_hours: string | null;
   theme: ThemeName;
   banner_url: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  tiktok_url: string | null;
+  website_url: string | null;
+  announcement: string | null;
+  announcement_enabled: boolean;
 }
 
 export interface AppUser {
@@ -101,3 +120,11 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   instapay: "إنستاباي",
   wallet: "محفظة إلكترونية",
 };
+
+// السعر الفعلي اللي المفروض يتحاسب بيه العميل (سعر الخصم لو موجود، وإلا سعر البيع العادي)
+export function getEffectivePrice(product: { sale_price: number; discount_price: number | null }): number {
+  if (product.discount_price != null && product.discount_price > 0 && product.discount_price < product.sale_price) {
+    return product.discount_price;
+  }
+  return product.sale_price;
+}

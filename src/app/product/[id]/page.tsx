@@ -15,13 +15,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const supabase = await createClient();
   const settings = await getStoreSettings();
 
-  const { data: product } = await supabase.from("products").select("id,name,description,image_url,category_id,sale_price,status,is_featured").eq("id", id).single();
+  const { data: product } = await supabase.from("products").select("id,name,description,image_url,category_id,home_section_id,sale_price,discount_price,status,is_featured").eq("id", id).single();
   if (!product) notFound();
 
   const similar = await getSimilarProducts(supabase, id, product.category_id, 4);
 
   return (
-    <div>
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1">
       <StoreHeader settings={settings} />
       <ProductDetailClient product={product as Product} />
 
@@ -35,6 +36,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </div>
         </section>
       )}
+      </div>
       <StoreFooter settings={settings} />
     </div>
   );

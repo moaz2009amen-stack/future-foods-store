@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import type { Product } from "@/types";
+import { getEffectivePrice } from "@/types";
 import { useCartStore } from "@/store/cart";
 
 export default function ProductDetailClient({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const addItem = useCartStore((s) => s.addItem);
   const available = product.status === "available";
+  const effectivePrice = getEffectivePrice(product);
+  const hasDiscount = effectivePrice < product.sale_price;
 
   return (
     <section className="max-w-7xl mx-auto px-4 pt-6 grid sm:grid-cols-2 gap-8">
@@ -31,7 +34,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           {available ? "متوفر" : "غير متوفر"}
         </span>
         {product.description && <p className="text-muted mb-4 leading-relaxed">{product.description}</p>}
-        <div className="text-3xl font-bold text-accent mb-6">{product.sale_price} ج.م</div>
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-3xl font-bold text-accent">{effectivePrice} ج.م</span>
+          {hasDiscount && (
+            <span className="text-lg text-muted line-through">{product.sale_price} ج.م</span>
+          )}
+        </div>
 
         <div className="flex items-center gap-4 mb-6">
           <span className="text-sm text-muted">الكمية</span>

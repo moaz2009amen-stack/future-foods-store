@@ -15,12 +15,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const { data: products } = q
     ? await supabase
         .from("products")
-        .select("id,name,description,image_url,category_id,sale_price,status,is_featured")
+        .select("id,name,description,image_url,category_id,home_section_id,sale_price,discount_price,status,is_featured")
         .ilike("name", `%${q}%`)
     : { data: [] };
 
   return (
-    <div>
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1">
       <StoreHeader settings={settings} />
       <section className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-xl font-bold mb-6">نتائج البحث عن &quot;{q}&quot;</h1>
@@ -34,6 +35,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <p className="text-muted text-center py-16">لا توجد نتائج مطابقة</p>
         )}
       </section>
+      </div>
       <StoreFooter settings={settings} />
     </div>
   );

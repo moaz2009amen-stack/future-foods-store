@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const productIds = items.map((i: { id: string }) => i.id);
   const { data: dbProducts } = await supabase
     .from("products")
-    .select("id, name, sale_price, purchase_price")
+    .select("id, name, sale_price, purchase_price, discount_price")
     .in("id", productIds);
 
   const priceMap = new Map((dbProducts || []).map((p) => [p.id, p]));
@@ -56,13 +56,17 @@ export async function POST(req: Request) {
   const resolvedItems: ResolvedItem[] = items.map(
     (i: { id: string; quantity: number }) => {
       const p = priceMap.get(i.id);
+      const basePrice = p?.sale_price ?? 0;
+      const discount = p?.discount_price;
+      const effectivePrice =
+        discount != null && discount > 0 && discount < basePrice ? discount : basePrice;
       return {
         product_id: i.id,
         product_name: p?.name ?? "منتج",
         quantity: i.quantity,
-        sale_price: p?.sale_price ?? 0,
+        sale_price: effectivePrice,
         purchase_price: p?.purchase_price ?? 0,
-        line_total: (p?.sale_price ?? 0) * i.quantity,
+        line_total: effectivePrice * i.quantity,
       };
     }
   );

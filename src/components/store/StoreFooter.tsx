@@ -1,9 +1,19 @@
+import Link from "next/link";
+import { MapPinned  } from "lucide-react";
 import type { StoreSettings } from "@/types";
+import { FacebookIcon, InstagramIcon, TiktokIcon } from "./SocialIcons";
 
 // غيّر الرابط ده لرابط صفحة الفيسبوك بتاعتك الحقيقي
-const DEVELOPER_FACEBOOK_URL = "https://www.facebook.com/profile.php?id=61552026802548&locale=ar_AR";
+const DEVELOPER_FACEBOOK_URL = "https://facebook.com/REPLACE_WITH_YOUR_PAGE";
 
 export default function StoreFooter({ settings }: { settings: StoreSettings }) {
+  const socialLinks = [
+    { url: settings.facebook_url, icon: FacebookIcon, label: "فيسبوك" },
+    { url: settings.instagram_url, icon: InstagramIcon, label: "إنستجرام" },
+    { url: settings.tiktok_url, icon: TiktokIcon, label: "تيك توك" },
+    { url: settings.website_url, icon: MapPinned, label: "الموقع" },
+  ].filter((s) => s.url);
+
   return (
     <footer className="border-t border-border mt-16 bg-surface">
       <div className="max-w-7xl mx-auto px-4 py-10 grid gap-8 sm:grid-cols-3 text-sm">
@@ -25,6 +35,24 @@ export default function StoreFooter({ settings }: { settings: StoreSettings }) {
           <p className="text-muted mt-1">الحد الأدنى للطلب: {settings.min_order} ج.م</p>
         </div>
       </div>
+
+      {socialLinks.length > 0 && (
+        <div className="flex items-center justify-center gap-3 pb-6">
+          {socialLinks.map((s) => (
+            <Link
+              key={s.label}
+              href={s.url!}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={s.label}
+              className="w-10 h-10 rounded-full bg-surface2 border border-border flex items-center justify-center text-muted hover:text-accent hover:border-accent transition-colors"
+            >
+              <s.icon className="w-4 h-4" />
+            </Link>
+          ))}
+        </div>
+      )}
+
       <div className="text-center text-xs text-muted border-t border-border py-4 flex items-center justify-center gap-1.5 flex-wrap">
         <span>© {new Date().getFullYear()} {settings.store_name_en} — جميع الحقوق محفوظة</span>
         <span className="opacity-40">|</span>

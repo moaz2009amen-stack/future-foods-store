@@ -15,6 +15,7 @@ import {
   BarChart3,
   Menu,
   X,
+  LayoutGrid,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types";
@@ -23,6 +24,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; ow
   { href: "/admin/dashboard", label: "الرئيسية", icon: LayoutDashboard },
   { href: "/admin/orders", label: "الطلبات", icon: ClipboardList },
   { href: "/admin/products", label: "المنتجات", icon: Package },
+  { href: "/admin/home-sections", label: "كروت الصفحة الرئيسية", icon: LayoutGrid, ownerOnly: true },
   { href: "/admin/invoices", label: "الفواتير", icon: Receipt },
   { href: "/admin/reports", label: "التقارير", icon: BarChart3, ownerOnly: true },
   { href: "/admin/users", label: "المستخدمون", icon: Users, ownerOnly: true },

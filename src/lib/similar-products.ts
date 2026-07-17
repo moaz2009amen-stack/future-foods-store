@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Product } from "@/types";
 
-const PUBLIC_COLUMNS = "id,name,description,image_url,category_id,sale_price,status,is_featured";
+const PUBLIC_COLUMNS = "id,name,description,image_url,category_id,home_section_id,sale_price,discount_price,status,is_featured";
 
 /**
  * بيقترح منتجات مشابهة بترتيب ذكي:

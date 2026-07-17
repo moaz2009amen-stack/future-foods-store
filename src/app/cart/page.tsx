@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
+import { getEffectivePrice } from "@/types";
 import { useEffect, useState } from "react";
 import type { StoreSettings } from "@/types";
 
@@ -43,7 +44,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold text-sm">{item.product.name}</div>
-                  <div className="text-accent font-bold text-sm">{item.product.sale_price} ج.م</div>
+                  <div className="text-accent font-bold text-sm">{getEffectivePrice(item.product)} ج.م</div>
                 </div>
                 <div className="flex items-center gap-2 card px-2 py-1">
                   <button onClick={() => increment(item.product.id)}><Plus className="w-4 h-4" /></button>

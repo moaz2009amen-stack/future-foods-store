@@ -20,8 +20,14 @@ export async function getStoreSettings(): Promise<StoreSettings> {
       delivery_fee: 0,
       min_order: 0,
       working_hours: null,
-      theme: "red",
+      theme: "white",
       banner_url: null,
+      facebook_url: null,
+      instagram_url: null,
+      tiktok_url: null,
+      website_url: null,
+      announcement: null,
+      announcement_enabled: false,
     }
   );
 }
