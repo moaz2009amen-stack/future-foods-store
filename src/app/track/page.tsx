@@ -2,25 +2,28 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { ORDER_STATUS_LABELS, type Order } from "@/types";
+import { ORDER_STATUS_LABELS, type OrderStatus } from "@/types";
+
+interface TrackedOrder {
+  id: string;
+  order_number: number;
+  status: OrderStatus;
+  total: number;
+  created_at: string;
+}
 
 function TrackContent() {
   const params = useSearchParams();
   const [phone, setPhone] = useState(params.get("phone") ?? "");
-  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [orders, setOrders] = useState<TrackedOrder[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function search(p: string) {
     if (!p) return;
     setLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("customer_phone", p)
-      .order("created_at", { ascending: false });
-    setOrders((data as Order[]) ?? []);
+    const res = await fetch(`/api/track?phone=${encodeURIComponent(p)}`);
+    const data = await res.json();
+    setOrders(res.ok ? data.orders : []);
     setLoading(false);
   }
 

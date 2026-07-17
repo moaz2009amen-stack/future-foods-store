@@ -1,18 +1,60 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { name, phone, address, notes, items, deliveryFee, paymentMethod, paymentProofUrl } = body;
+  const {
+    name,
+    phone,
+    address,
+    notes,
+    items,
+    deliveryFee,
+    paymentMethod,
+    paymentProofUrl,
+  } = body;
 
-  if (!name || !phone || !address || !items?.length) {
+  if (
+    !name ||
+    !phone ||
+    !address ||
+    !Array.isArray(items) ||
+    items.length === 0
+  ) {
     return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
   }
 
-  const validPaymentMethods = ["cash", "instapay", "wallet"];
-  const finalPaymentMethod = validPaymentMethods.includes(paymentMethod) ? paymentMethod : "cash";
+  // حماية بسيطة من الطلبات غير المنطقية (عدد بنود كبير أوي أو كميات غير صحيحة)
+  if (items.length > 100) {
+    return NextResponse.json(
+      { error: "عدد المنتجات في الطلب كبير جداً" },
+      { status: 400 },
+    );
+  }
+  const hasInvalidItem = items.some(
+    (i: { id?: unknown; quantity?: unknown }) =>
+      typeof i.id !== "string" ||
+      typeof i.quantity !== "number" ||
+      !Number.isFinite(i.quantity) ||
+      i.quantity <= 0 ||
+      i.quantity > 100,
+  );
+  if (hasInvalidItem) {
+    return NextResponse.json(
+      { error: "بيانات المنتجات غير صحيحة" },
+      { status: 400 },
+    );
+  }
 
-  const supabase = await createClient();
+  const validPaymentMethods = ["cash", "instapay", "wallet"];
+  const finalPaymentMethod = validPaymentMethods.includes(paymentMethod)
+    ? paymentMethod
+    : "cash";
+
+  // العملية دي كلها بتتم بصلاحيات السيرفر (Service Role) مش بصلاحيات المتصفح العامة،
+  // عشان محدش يقدر يوصل لجداول customers/orders/order_items/invoices مباشرة من برة الموقع.
+  // الحماية بقت في منطق السيرفر نفسه، مش في صلاحيات قاعدة البيانات المفتوحة.
+  const supabase = createAdminClient();
 
   // إنشاء أو استخدام عميل موجود بنفس الرقم
   let customerId: string | null = null;
@@ -59,7 +101,9 @@ export async function POST(req: Request) {
       const basePrice = p?.sale_price ?? 0;
       const discount = p?.discount_price;
       const effectivePrice =
-        discount != null && discount > 0 && discount < basePrice ? discount : basePrice;
+        discount != null && discount > 0 && discount < basePrice
+          ? discount
+          : basePrice;
       return {
         product_id: i.id,
         product_name: p?.name ?? "منتج",
@@ -68,10 +112,24 @@ export async function POST(req: Request) {
         purchase_price: p?.purchase_price ?? 0,
         line_total: effectivePrice * i.quantity,
       };
-    }
+    },
   );
 
-  const itemsTotal = resolvedItems.reduce((sum: number, i: ResolvedItem) => sum + i.line_total, 0);
+  // لو حد بعت منتجات مش موجودة أصلاً في قاعدة البيانات، نرفض الطلب بدل ما نسجله بسعر صفر
+  const hasUnknownProduct = resolvedItems.some(
+    (i) => !priceMap.has(i.product_id),
+  );
+  if (hasUnknownProduct) {
+    return NextResponse.json(
+      { error: "بعض المنتجات غير متاحة" },
+      { status: 400 },
+    );
+  }
+
+  const itemsTotal = resolvedItems.reduce(
+    (sum: number, i: ResolvedItem) => sum + i.line_total,
+    0,
+  );
   const total = itemsTotal + (deliveryFee || 0);
 
   const { data: order, error } = await supabase
@@ -85,7 +143,8 @@ export async function POST(req: Request) {
       delivery_fee: deliveryFee || 0,
       total,
       payment_method: finalPaymentMethod,
-      payment_proof_url: finalPaymentMethod === "cash" ? null : (paymentProofUrl || null),
+      payment_proof_url:
+        finalPaymentMethod === "cash" ? null : paymentProofUrl || null,
     })
     .select("*")
     .single();
@@ -94,14 +153,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "تعذر إنشاء الطلب" }, { status: 500 });
   }
 
-  await supabase.from("order_items").insert(
-    resolvedItems.map((i) => ({ ...i, order_id: order.id }))
-  );
+  await supabase
+    .from("order_items")
+    .insert(resolvedItems.map((i) => ({ ...i, order_id: order.id })));
 
   // الفاتورة بتتعمل فوراً وقت ما الطلب بيتسجل، مش لما يتحول لـ"تم التسليم"
   const totalPurchase = resolvedItems.reduce(
     (sum, i) => sum + i.purchase_price * i.quantity,
-    0
+    0,
   );
   await supabase.from("invoices").insert({
     order_id: order.id,
