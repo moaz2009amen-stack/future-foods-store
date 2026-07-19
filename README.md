@@ -48,7 +48,7 @@ select id, 'moaz', 'owner' from auth.users where email = 'moaz@store.local';
 2. من الـ Dashboard انسخ **Cloud name** → ده `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`.
 3. روح **Settings → Upload → Upload presets → Add upload preset**:
    - Signing Mode: اختار **Unsigned**
-   - احفظ، وانسخ اسم الـ preset → ده `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`
+   - احفظ، وانسخ اسم الـ preset → ده `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`.
 
 ---
 
