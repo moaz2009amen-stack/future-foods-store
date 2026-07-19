@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import CloudinaryUpload from "@/components/admin/CloudinaryUpload";
 import type { StoreSettings, Category } from "@/types";
@@ -21,6 +21,10 @@ export default function SettingsClient({
   const [categories, setCategories] = useState(initialCategories);
   const [newCategory, setNewCategory] = useState("");
   const [newCategoryImage, setNewCategoryImage] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editImage, setEditImage] = useState<string | null>(null);
+  const [savingCategory, setSavingCategory] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -87,6 +91,32 @@ export default function SettingsClient({
     const supabase = createClient();
     await supabase.from("categories").delete().eq("id", id);
     setCategories(categories.filter((c) => c.id !== id));
+  }
+
+  function openEditCategory(c: Category) {
+    setEditingCategory(c);
+    setEditName(c.name);
+    setEditImage(c.image_url);
+  }
+
+  async function saveEditCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCategory) return;
+    setSavingCategory(true);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("categories")
+      .update({ name: editName.trim(), image_url: editImage })
+      .eq("id", editingCategory.id)
+      .select("*")
+      .single();
+    setSavingCategory(false);
+    if (error) {
+      alert("حدث خطأ أثناء الحفظ: " + error.message);
+      return;
+    }
+    setCategories(categories.map((c) => (c.id === editingCategory.id ? data : c)));
+    setEditingCategory(null);
   }
 
   return (
@@ -288,6 +318,9 @@ export default function SettingsClient({
                 )}
               </div>
               <span className="flex-1">{c.name}</span>
+              <button onClick={() => openEditCategory(c)} className="text-muted hover:text-accent">
+                <Pencil className="w-4 h-4" />
+              </button>
               <button onClick={() => deleteCategory(c.id)} className="text-danger">
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -295,6 +328,36 @@ export default function SettingsClient({
           ))}
         </ul>
       </div>
+
+      {editingCategory && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <form onSubmit={saveEditCategory} className="card p-6 w-full max-w-sm flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <h2 className="font-bold">تعديل القسم</h2>
+              <button type="button" onClick={() => setEditingCategory(null)}><X className="w-5 h-5" /></button>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted block mb-1">صورة القسم</label>
+              <CloudinaryUpload value={editImage} onChange={setEditImage} />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted block mb-1">اسم القسم</label>
+              <input
+                required
+                className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-sm"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+
+            <button disabled={savingCategory} className="btn-accent rounded-lg py-2.5 font-bold disabled:opacity-50">
+              {savingCategory ? "جاري الحفظ..." : "حفظ التعديل"}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
