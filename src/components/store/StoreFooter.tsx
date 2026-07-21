@@ -4,7 +4,7 @@ import type { StoreSettings } from "@/types";
 import { FacebookIcon, InstagramIcon, TiktokIcon } from "./SocialIcons";
 
 // غيّر الرابط ده لرابط صفحة الفيسبوك بتاعتك الحقيقي
-const DEVELOPER_FACEBOOK_URL = "https://facebook.com/REPLACE_WITH_YOUR_PAGE";
+const DEVELOPER_FACEBOOK_URL = "https://www.facebook.com/profile.php?id=61552026802548";
 
 export default function StoreFooter({ settings }: { settings: StoreSettings }) {
   const socialLinks = [
