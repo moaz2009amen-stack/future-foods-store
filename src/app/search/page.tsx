@@ -1,0 +1,45 @@
+import { createClient } from "@/lib/supabase/server";
+import { getStoreSettings } from "@/lib/settings";
+import StoreHeader from "@/components/store/StoreHeader";
+import StoreFooter from "@/components/store/StoreFooter";
+import ProductCard from "@/components/store/ProductCard";
+import WhatsAppButton from "@/components/store/WhatsAppButton";
+import SearchTracker from "@/components/store/SearchTracker";
+import type { Product } from "@/types";
+
+export const revalidate = 0;
+
+const PUBLIC_COLUMNS = "id,slug,name,description,image_url,category_id,sale_price,discount_price,status,is_featured";
+
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q = "" } = await searchParams;
+  const supabase = await createClient();
+  const settings = await getStoreSettings();
+
+  const { data: products } = q
+    ? await supabase.from("products").select(PUBLIC_COLUMNS).eq("status", "available").ilike("name", `%${q}%`)
+    : { data: [] };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1">
+      <StoreHeader settings={settings} />
+      <SearchTracker query={q} />
+      <section className="max-w-7xl mx-auto px-4 py-8">
+        <h1 className="text-xl font-bold mb-6">نتائج البحث عن &quot;{q}&quot;</h1>
+        {products && products.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {(products as Product[]).map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted text-center py-16">لا توجد نتائج مطابقة</p>
+        )}
+      </section>
+      </div>
+      <StoreFooter settings={settings} />
+      <WhatsAppButton whatsappNumber={settings.whatsapp_number} />
+    </div>
+  );
+}

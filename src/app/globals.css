@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* الثيم الأساسي والوحيد: أبيض متناسق مع لمسات حمراء فاتحة */
+  --bg: #fdf8f8;
+  --surface: #ffffff;
+  --surface-2: #fdf0f0;
+  --border: #f4d9d9;
+  --text: #241414;
+  --text-muted: #8a6b6b;
+  --accent: #ef4444;
+  --accent-hover: #dc2626;
+  --accent-2: #f87171;
+  --accent-contrast: #ffffff;
+  --success: #ef4444;
+  --warning: #d97706;
+  --danger: #b91c1c;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Cairo", "Segoe UI", sans-serif;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.1rem;
+  box-shadow: 0 1px 3px rgba(36, 20, 20, 0.06), 0 1px 2px rgba(36, 20, 20, 0.04);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: var(--accent-contrast);
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+.btn-accent:hover {
+  filter: brightness(1.1);
+}
+.btn-accent:active {
+  transform: scale(0.97);
+}
+
+.hero-gradient {
+  background: radial-gradient(circle at 15% 20%, rgba(239, 68, 68, 0.14), transparent 55%),
+    radial-gradient(circle at 85% 80%, rgba(248, 113, 113, 0.14), transparent 55%),
+    var(--surface);
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+  70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+.new-order-pulse {
+  animation: pulse-ring 1.5s infinite;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
