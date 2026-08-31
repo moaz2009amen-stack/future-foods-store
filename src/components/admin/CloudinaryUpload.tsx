@@ -20,9 +20,6 @@ export default function CloudinaryUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // فحص نوع وحجم الملف من جهة المتصفح (خط دفاع أول، مش بديل عن
-    // ضبط الـ Upload Preset نفسه من Cloudinary Dashboard بحد أقصى
-    // للحجم ونوع الملفات المسموحة — ده لازم يتظبط من هناك كمان)
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError("الصور المسموحة بس: JPG, PNG, WEBP");
       return;
@@ -32,22 +29,29 @@ export default function CloudinaryUpload({
       return;
     }
 
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-    if (!cloudName || !preset) {
-      setError("لم يتم إعداد Cloudinary — راجع متغيرات البيئة");
-      return;
-    }
-
     setLoading(true);
     setError("");
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", preset);
 
     try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      // بناخد توقيع آمن من السيرفر بدل ما نستخدم Upload Preset مكشوف
+      // لأي حد على الإنترنت — التوقيع ده محدود بالوقت ومربوط بمجلد
+      // ثابت محدد من السيرفر نفسه
+      const signRes = await fetch("/api/cloudinary-sign");
+      const signData = await signRes.json();
+      if (!signRes.ok) {
+        setError(signData.error || "تعذر تجهيز الرفع");
+        setLoading(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", signData.apiKey);
+      formData.append("timestamp", String(signData.timestamp));
+      formData.append("signature", signData.signature);
+      formData.append("folder", signData.folder);
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/image/upload`, {
         method: "POST",
         body: formData,
       });

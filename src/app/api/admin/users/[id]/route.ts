@@ -14,6 +14,25 @@ async function requireOwner() {
   return appUser;
 }
 
+// بيتأكد إن العملية (تعطيل/تنزيل درجة/حذف) مش هتسيب النظام من غير
+// أي أونر نشط، عشان محدش يقفل نفسه وكل الأونرز بره لوحة التحكم بالغلط
+async function wouldRemoveLastOwner(
+  admin: ReturnType<typeof createAdminClient>,
+  targetId: string
+): Promise<boolean> {
+  const { data: target } = await admin.from("app_users").select("role").eq("id", targetId).single();
+  if (target?.role !== "owner") return false;
+
+  const { count } = await admin
+    .from("app_users")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "owner")
+    .eq("active", true)
+    .neq("id", targetId);
+
+  return !count || count < 1;
+}
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const owner = await requireOwner();
   if (!owner) return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
@@ -21,6 +40,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json();
   const admin = createAdminClient();
+
+  const willDeactivate = body.active === false;
+  const willDemote = body.role === "worker";
+
+  if (willDeactivate || willDemote) {
+    if (await wouldRemoveLastOwner(admin, id)) {
+      return NextResponse.json(
+        { error: "لازم يفضل أونر واحد نشط على الأقل في النظام" },
+        { status: 400 }
+      );
+    }
+  }
 
   if (body.password) {
     const { error } = await admin.auth.admin.updateUserById(id, { password: body.password });
@@ -43,6 +74,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const admin = createAdminClient();
+
+  if (await wouldRemoveLastOwner(admin, id)) {
+    return NextResponse.json(
+      { error: "لازم يفضل أونر واحد على الأقل في النظام، متقدرش تحذف ده" },
+      { status: 400 }
+    );
+  }
+
   await admin.auth.admin.deleteUser(id);
   await admin.from("app_users").delete().eq("id", id);
 

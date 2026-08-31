@@ -3,11 +3,39 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const MIN_SECONDS_BETWEEN_ORDERS = 60;
 
+// حماية إضافية على مستوى IP (مش رقم الهاتف بس)، عشان سكريبت آلي
+// بيبعت أرقام هواتف عشوائية مختلفة كل مرة ميقدرش يتحايل على حد
+// الـ 60 ثانية بتاع الرقم الواحد. في الذاكرة بس (بيتصفر مع كل نشر
+// جديد على Vercel) — طبقة حماية إضافية مش بديل عن حل مخصص زي Redis
+// لو الموقع كبر واحتاج حماية أقوى.
+const ipAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ORDERS_PER_IP = 5;
+const IP_WINDOW_MS = 10 * 60 * 1000;
+
+function isIpRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    ipAttempts.set(ip, { count: 1, resetAt: now + IP_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > MAX_ORDERS_PER_IP;
+}
+
 function isValidEgyptianPhone(phone: string): boolean {
   return /^01[0125][0-9]{8}$/.test(phone);
 }
 
 export async function POST(req: Request) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (isIpRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "عدد الطلبات كتير من نفس الجهاز في وقت قصير، حاول تاني بعد شوية" },
+      { status: 429 }
+    );
+  }
+
   const body = await req.json();
   const { name, phone, address, notes, items, paymentMethod, paymentProofUrl, couponCode } = body;
 
@@ -39,7 +67,7 @@ export async function POST(req: Request) {
 
   const supabase = createAdminClient();
 
-  // ── حماية من السبام ──
+  // ── حماية من السبام (رقم الهاتف) ──
   const { data: lastOrder } = await supabase
     .from("orders")
     .select("created_at")
@@ -79,7 +107,6 @@ export async function POST(req: Request) {
     customerId = newCustomer?.id ?? null;
   }
 
-  // أسعار وحالة توفر المنتجات من قاعدة البيانات مباشرة، مش من المتصفح
   const productIds = items.map((i: { id: string }) => i.id);
   const { data: dbProducts } = await supabase
     .from("products")
@@ -88,8 +115,6 @@ export async function POST(req: Request) {
 
   const priceMap = new Map((dbProducts || []).map((p) => [p.id, p]));
 
-  // لو أي منتج بقى "غير متوفر" بعد ما العميل ضافه للسلة (تغيير من الأدمن
-  // في نفس الوقت مثلاً)، نرفض الطلب كله بدل ما نسجله ناقص من غير توضيح
   const unavailableItem = items.find((i: { id: string }) => {
     const p = priceMap.get(i.id);
     return p && p.status !== "available";
@@ -142,7 +167,10 @@ export async function POST(req: Request) {
   const freeDelivery = threshold != null && threshold > 0 && itemsTotal >= threshold;
   const deliveryFee = freeDelivery ? 0 : baseDeliveryFee;
 
-  // التحقق من الكوبون وزيادة استخدامه بعملية atomic تمنع التلاعب المتزامن
+  // ── الكوبون: لو العميل حدد كود، ولو بقى غير صالح وقت التأكيد
+  // (وصل للحد الأقصى، انتهى، إلخ) بنرفض الطلب صراحة بدل ما نكمله
+  // بصمت من غير خصم — العميل كان شايف السعر مع الخصم في صفحة الدفع
+  // فلازم يعرف إن السعر اتغير قبل ما يتحاسب بيه
   let discountAmount = 0;
   let finalCouponCode: string | null = null;
 
@@ -154,22 +182,41 @@ export async function POST(req: Request) {
       .eq("is_active", true)
       .maybeSingle();
 
-    if (coupon) {
-      const notExpired = !coupon.expires_at || new Date(coupon.expires_at) > new Date();
-      const meetsMinOrder = itemsTotal >= coupon.min_order;
-
-      if (notExpired && meetsMinOrder) {
-        const { data: increased } = await supabase.rpc("increment_coupon_usage", { coupon_id: coupon.id });
-
-        if (increased) {
-          discountAmount =
-            coupon.type === "percentage"
-              ? Math.round((itemsTotal * coupon.value) / 100)
-              : Math.min(coupon.value, itemsTotal);
-          finalCouponCode = coupon.code;
-        }
-      }
+    if (!coupon) {
+      return NextResponse.json(
+        { error: "الكوبون بقى غير صالح، احذفه من الطلب وحاول تاني" },
+        { status: 400 }
+      );
     }
+
+    const notExpired = !coupon.expires_at || new Date(coupon.expires_at) > new Date();
+    if (!notExpired) {
+      return NextResponse.json(
+        { error: "الكوبون انتهت صلاحيته، احذفه من الطلب وحاول تاني" },
+        { status: 400 }
+      );
+    }
+
+    if (itemsTotal < coupon.min_order) {
+      return NextResponse.json(
+        { error: `الكوبون ده يتطلب حد أدنى للطلب ${coupon.min_order} ج.م` },
+        { status: 400 }
+      );
+    }
+
+    const { data: increased } = await supabase.rpc("increment_coupon_usage", { coupon_id: coupon.id });
+    if (!increased) {
+      return NextResponse.json(
+        { error: "الكوبون وصل للحد الأقصى من الاستخدام، احذفه من الطلب وحاول تاني" },
+        { status: 400 }
+      );
+    }
+
+    discountAmount =
+      coupon.type === "percentage"
+        ? Math.round((itemsTotal * coupon.value) / 100)
+        : Math.min(coupon.value, itemsTotal);
+    finalCouponCode = coupon.code;
   }
 
   const total = Math.max(0, itemsTotal + deliveryFee - discountAmount);

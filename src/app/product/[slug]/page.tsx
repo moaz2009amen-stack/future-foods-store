@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreSettings } from "@/lib/settings";
 import { getSimilarProducts } from "@/lib/similar-products";
 import { getEffectivePrice } from "@/types";
+import { safeJsonLd } from "@/lib/json-ld";
 import StoreHeader from "@/components/store/StoreHeader";
 import StoreFooter from "@/components/store/StoreFooter";
 import ProductCard from "@/components/store/ProductCard";
@@ -20,7 +21,11 @@ const PUBLIC_COLUMNS =
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data: product } = await supabase.from("products").select("name, description, image_url").eq("slug", decodeURIComponent(slug)).single();
+  const { data: product } = await supabase
+    .from("products")
+    .select("name, description, image_url")
+    .eq("slug", decodeURIComponent(slug))
+    .single();
 
   if (!product) return {};
 
@@ -42,9 +47,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     .eq("slug", decodeURIComponent(slug))
     .single();
 
-  // لو حصل خطأ فعلي في الاتصال بقاعدة البيانات (مش مجرد "مفيش نتيجة")،
-  // منورّيش صفحة 404 المضلّلة، أحسن نرمي خطأ عادي يوديه لصفحة الخطأ
-  // العامة اللي بتوضح إن فيه مشكلة تقنية مش إن المنتج مش موجود
   if (productError && productError.code !== "PGRST116") {
     throw new Error("تعذر تحميل بيانات المنتج");
   }
@@ -80,7 +82,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <div className="min-h-screen flex flex-col">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }}
       />
       <div className="flex-1">
       <StoreHeader settings={settings} />

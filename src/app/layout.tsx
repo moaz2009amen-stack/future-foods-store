@@ -5,6 +5,7 @@ import "./globals.css";
 import PWARegister from "@/components/PWARegister";
 import Analytics from "@/components/analytics/Analytics";
 import { getStoreSettings } from "@/lib/settings";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -80,7 +81,7 @@ export default async function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }}
         />
       </head>
       <body className={`${cairo.variable} font-cairo antialiased`}>

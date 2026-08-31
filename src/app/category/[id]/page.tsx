@@ -15,7 +15,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   const supabase = await createClient();
   const settings = await getStoreSettings();
 
-  const [{ data: category }, { data: products }] = await Promise.all([
+  const [{ data: category }, { data: products, error: productsError }] = await Promise.all([
     supabase.from("categories").select("*").eq("id", id).single(),
     supabase.from("products").select(PUBLIC_COLUMNS).eq("category_id", id).eq("status", "available"),
   ]);
@@ -26,7 +26,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
       <StoreHeader settings={settings} />
       <section className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-xl font-bold mb-6">{category?.name ?? "القسم"}</h1>
-        {products && products.length > 0 ? (
+        {productsError ? (
+          <p className="text-danger text-center py-16">
+            حصل خطأ أثناء تحميل المنتجات، جرب تحدّث الصفحة
+          </p>
+        ) : products && products.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {(products as Product[]).map((p) => (
               <ProductCard key={p.id} product={p} />

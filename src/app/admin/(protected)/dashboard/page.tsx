@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ORDER_STATUS_LABELS } from "@/types";
+import { AlertTriangle } from "lucide-react";
 
 export const revalidate = 0;
 
@@ -7,12 +8,12 @@ export default async function DashboardPage() {
   const supabase = await createClient();
 
   const [
-    { count: newCount },
-    { count: preparingCount },
-    { count: deliveredCount },
-    { count: cancelledCount },
-    { data: allOrders },
-    { data: recentOrders },
+    { count: newCount, error: e1 },
+    { count: preparingCount, error: e2 },
+    { count: deliveredCount, error: e3 },
+    { count: cancelledCount, error: e4 },
+    { data: allOrders, error: e5 },
+    { data: recentOrders, error: e6 },
   ] = await Promise.all([
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "new"),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "preparing"),
@@ -22,7 +23,12 @@ export default async function DashboardPage() {
     supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(5),
   ]);
 
-  const { data: invoices } = await supabase.from("invoices").select("profit, created_at");
+  const { data: invoices, error: e7 } = await supabase.from("invoices").select("profit, created_at");
+
+  // لو أي استعلام فشل (انقطاع مؤقت في الاتصال بقاعدة البيانات مثلاً)،
+  // بنوضّح ده صراحة بدل ما نعرض أصفار كأنها بيانات حقيقية — ده بيمنع
+  // الأدمن من الاعتقاد الخاطئ إن السجل فاضي فعلاً
+  const hasError = !!(e1 || e2 || e3 || e4 || e5 || e6 || e7);
 
   const totalSales = (allOrders ?? []).reduce((s, o) => s + Number(o.total), 0);
   const totalProfit = (invoices ?? []).reduce((s, i) => s + Number(i.profit), 0);
@@ -64,6 +70,13 @@ export default async function DashboardPage() {
   return (
     <div>
       <h1 className="text-xl font-bold mb-6">لوحة المعلومات</h1>
+
+      {hasError && (
+        <div className="card p-3 mb-6 bg-danger/10 border-danger/30 text-danger text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          حصل خطأ أثناء تحميل بعض البيانات، الأرقام تحت ممكن تكون ناقصة. جرب تحدّث الصفحة.
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {cards.map((c) => (
